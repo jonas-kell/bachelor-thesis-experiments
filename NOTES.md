@@ -14,9 +14,9 @@
 
 # JAX
 
--   Only runs on Linux (may run on WSL)
+-   Only runs on Linux (may run on WSL, DOES NOT WORK WITH WIN 10, ONLY 11)
 -   Install from [this guide](https://github.com/google/jax#pip-installation-gpu-cuda).
--   WSL:
+-   WSL (Ubuntu 20.04):
 
     -   install [CUDA](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=WSL-Ubuntu&target_version=2.0&target_type=deb_local) (command line instruction here)
         -   ```
@@ -41,24 +41,48 @@
             sudo dpkg -i cudnn-local-repo-ubuntu2004-8.4.0.27_1.0-1_amd64.deb
             ```
     -   link GPU functionality
-        -   `sudo ln -s /path/to/cuda /usr/local/cuda-X.X` (Was already linked for me)
-    -   check SAMPLES:
-        -   download: `git clone https://github.com/NVIDIA/cuda-samples.git`
+        -   `sudo ln -s /path/to/cuda /usr/local/cuda-11.6` (Was already linked for me)
     -   install jax
         ```
         pip install --upgrade pip
         pip install --upgrade --force-reinstall --no-cache  "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_releases.html
         ```
-    -   use Tensorflow to check on installation:
+
+-   Linux (PopOs22.04):
+
+    -   install [CUDA](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=22.04&target_type=deb_local) (command line instruction here)
+        -   ```
+            wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
+            sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+            wget https://developer.download.nvidia.com/compute/cuda/11.7.0/local_installers/cuda-repo-ubuntu2204-11-7-local_11.7.0-515.43.04-1_amd64.deb
+            sudo dpkg -i cuda-repo-ubuntu2204-11-7-local_11.7.0-515.43.04-1_amd64.deb
+            sudo cp /var/cuda-repo-ubuntu2204-11-7-local/cuda-*-keyring.gpg /usr/share/keyrings/
+            sudo apt-get update
+            sudo apt-get -y install cuda
+            ```
+        -   cuda version check & system variables:
+            ```
+            export PATH=/usr/local/cuda-11.7/bin${PATH:+:${PATH}}
+            export LD_LIBRARY_PATH=/usr/local/cuda-11.7/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+            nvcc --version
+            ```
+    -   install [CuDNN](https://developer.nvidia.com/CUDNN):
+        -   download [this](https://developer.nvidia.com/compute/cudnn/secure/8.4.0/local_installers/11.6/cudnn-local-repo-ubuntu2004-8.4.0.27_1.0-1_amd64.deb)
+        -   ```
+            sudo dpkg -i cudnn-local-repo-ubuntu2004-8.4.0.27_1.0-1_amd64.deb
+            ```
+    -   link GPU functionality
+        -   `sudo ln -s /path/to/cuda /usr/local/cuda-11.7` (Was already linked for me)
+    -   install jax
         ```
-        pip install tensorflow --upgrade --force-reinstall
+        pip install --upgrade pip
+        pip install --upgrade --force-reinstall --no-cache  "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_releases.html
         ```
-        ```
-        from tensorflow.python.platform import build_info as tf_build_info
-        from tensorflow.config import list_physical_devices as tf_list_physical_devices
-        print(tf_build_info.build_info)
-        print(tf_list_physical_devices(device_type=None))
-        ```
+
+-   Check:
+
+    -   check SAMPLES:
+        -   download: `git clone https://github.com/NVIDIA/cuda-samples.git`
     -   check successful installation
 
         ```
@@ -67,8 +91,8 @@
         import jax.numpy as jnp
 
         def tanh(x):  # Define a function
-          y = jnp.exp(-2.0 * x)
-          return (1.0 - y) / (1.0 + y)
+            y = jnp.exp(-2.0 * x)
+            return (1.0 - y) / (1.0 + y)
 
         grad_tanh = grad(tanh)  # Obtain its gradient function
         print(grad_tanh(1.0))   # Evaluate it at x = 1.0
