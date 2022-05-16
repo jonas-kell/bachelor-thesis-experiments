@@ -54,15 +54,31 @@ batch_size = 64
 loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
+# ! push datasets to gpu as a whole (test)
+def push_to_cuda(dataloader):
+    dataset_pushed = []
+    size = len(dataloader.dataset)
+    num_batches = len(dataloader)
+
+    for batch, (X, y) in enumerate(dataloader):
+        dataset_pushed.append((batch, (X.to(device), y.to(device))))
+
+        if batch % 100 == 0:
+            current = batch * len(X)
+            print(f"preloading to gpu: [{current:>5d}/{size:>5d}]")
+
+    return type(
+        "",
+        (object,),
+        {"dataset": dataset_pushed, "size": size, "num_batches": num_batches},
+    )()
+
+
 # ! def loops
 
 
 def train_loop(dataloader, model, loss_fn, optimizer):
-    size = len(dataloader.dataset)
-    for batch, (X, y) in enumerate(dataloader):
-        # move to device
-        X = X.to(device)
-        y = y.to(device)
+    for batch, (X, y) in dataloader.dataset:
         # Compute prediction and loss
         pred = model(X)
         loss = loss_fn(pred, y)
@@ -74,27 +90,21 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
         if batch % 100 == 0:
             loss, current = loss.item(), batch * len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"loss: {loss:>7f}  [{current:>5d}/{dataloader.size:>5d}]")
 
 
 def test_loop(dataloader, model, loss_fn):
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)
     test_loss, correct = 0, 0
 
     with torch.no_grad():
-        for X, y in dataloader:
-            # move to device
-            X = X.to(device)
-            y = y.to(device)
-
+        for _, (X, y) in dataloader.dataset:
             # test
             pred = model(X)
             test_loss += loss_fn(pred, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
 
-    test_loss /= num_batches
-    correct /= size
+    test_loss /= dataloader.num_batches
+    correct /= dataloader.size
     print(
         f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n"
     )
@@ -102,8 +112,8 @@ def test_loop(dataloader, model, loss_fn):
 
 # ! train it like it's hot
 
-train_dataloader = DataLoader(training_data, batch_size=batch_size)
-test_dataloader = DataLoader(test_data, batch_size=batch_size)
+train_dataloader = push_to_cuda(DataLoader(training_data, batch_size=batch_size))
+test_dataloader = push_to_cuda(DataLoader(test_data, batch_size=batch_size))
 
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
