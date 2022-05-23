@@ -1,4 +1,6 @@
 {
+    "spellright.language": ["English (American)", "German_de_DE"],
+    "spellright.documentTypes": ["markdown", "latex", "plaintext", "javascript", "php"],
     "files.exclude": {
         "**/*.fdb_latexmk": true,
         "**/*.fls": true,

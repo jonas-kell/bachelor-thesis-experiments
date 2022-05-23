@@ -78,7 +78,7 @@
             ```
     -   link GPU functionality
         -   `sudo ln -s /path/to/cuda /usr/local/cuda-11.7` (Was already linked for me)
-    -   install jax
+    -   install JAX
         ```
         pip install --upgrade pip
         pip install --upgrade --force-reinstall --no-cache  "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_releases.html
@@ -110,4 +110,14 @@
 # Datasets
 
 -   [Image test datasets](https://www.cs.toronto.edu/~kriz/cifar.html)
--   [Pre-Trained vision Transformer](https://github.com/facebookresearch/dino)
+-   Image Net:
+    -   [Annotations in human readable form](https://image-net.org/challenges/LSVRC/2017/browse-synsets.php)
+    -   [Data](https://www.kaggle.com/competitions/imagenet-object-localization-challenge/data)
+        -   Get a kaggle Account
+        -   Download the `kaggle.json` from [The account](https://www.kaggle.com/kellehorreur/
+            account)
+        -   place in `/home/jonas/.kaggle` (`~/.kaggle`)
+        -   install the API-tool `pip install kaggle --upgrade`
+        -   download (go into folder that is large enough...) `kaggle competitions download -c imagenet-object-localization-challenge`
+    -   [Citation](https://image-net.org/challenges/LSVRC/2017/index#cite)
+-   Graph Dataset: [NCI1](https://paperswithcode.com/dataset/nci1)
