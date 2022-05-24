@@ -1,7 +1,4 @@
-# define lookup file
-synset_mapping_name = "used_synsets.txt"
-nr_categories = 100
-
+from custom_imagenet_constants import synset_mapping_name, nr_categories
 
 # allocate categories
 f = open(synset_mapping_name, "r")
@@ -27,7 +24,7 @@ def description_from_synset_id(synset_id):
 
 
 # get the synset id to a numerical/vector index
-def vector_index_from_synset_id(vector_index):
+def synset_id_from_vector_index(vector_index):
     return synset_ids[vector_index]
 
 
