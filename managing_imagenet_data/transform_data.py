@@ -11,6 +11,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 import matplotlib.pyplot as plt
 import torch
+from alive_progress import alive_bar
 
 
 def transform_training_data(transformation):
@@ -40,32 +41,39 @@ def transform_training_data(transformation):
 
         total_nr_images += len(image_file_names)
 
-    # transformations
-    for idx in range(nr_categories):
-        synset_id = synset_id_from_vector_index(idx)
+    with alive_bar(total_nr_images) as bar:
 
-        folder_with_training_data = os.path.join(
-            path_to_imagenet_data, train_folder_name, synset_id
-        )
+        # transformations
+        for idx in range(nr_categories):
+            synset_id = synset_id_from_vector_index(idx)
 
-        image_file_names = os.listdir(folder_with_training_data)
-
-        for image_file_name in image_file_names:
-            name = image_file_name.split(".", 1)[0]
-            path_to_file = os.path.join(folder_with_training_data, image_file_name)
-
-            img = Image.open(path_to_file)
-            tensor = transformation(img)
-            img.close()
-
-            torch.save(
-                tensor,
-                os.path.join(
-                    path_to_target_folder_for_transformed_data,
-                    train_folder_name,
-                    name + ".pt",
-                ),
+            folder_with_training_data = os.path.join(
+                path_to_imagenet_data, train_folder_name, synset_id
             )
+
+            image_file_names = os.listdir(folder_with_training_data)
+
+            for image_file_name in image_file_names:
+                name = image_file_name.split(".", 1)[0]
+                path_to_file = os.path.join(folder_with_training_data, image_file_name)
+
+                img = Image.open(path_to_file)
+
+                if img.mode == "RGB":  # grayscale images are ignored for simplicity
+
+                    tensor = transformation(img)
+                    torch.save(
+                        tensor,
+                        os.path.join(
+                            path_to_target_folder_for_transformed_data,
+                            train_folder_name,
+                            name + ".pt",
+                        ),
+                    )
+
+                img.close()  # free image memory
+
+                bar()  # advance progress bar
 
 
 if __name__ == "__main__":
