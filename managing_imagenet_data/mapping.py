@@ -31,3 +31,7 @@ def synset_id_from_vector_index(vector_index):
 # get the description to a numerical/vector index
 def description_from_vector_index(vector_index):
     return synset_descriptions[vector_index]
+
+
+def all_used_synset_ids():
+    return synset_ids
