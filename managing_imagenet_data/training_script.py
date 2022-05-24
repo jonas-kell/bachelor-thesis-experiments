@@ -1,14 +1,19 @@
-from black import main
+import os
+import datetime
+
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from torchvision import datasets
-from torchvision.transforms import ToTensor, Lambda
+from torch.utils.tensorboard import SummaryWriter
 
 from CustomDataset import CustomDataset
 from custom_imagenet_constants import (
     path_to_target_folder_for_transformed_data,
+    tensorboard_log_folder,
 )
+
+run_name = "test_at_" + datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
+writer = SummaryWriter(os.path.join(tensorboard_log_folder, run_name), flush_secs=1)
 
 
 class NeuralNetwork(nn.Module):
@@ -34,8 +39,12 @@ class NeuralNetwork(nn.Module):
 # ! def loops
 
 
-def train_loop(dataloader, model, loss_fn, optimizer):
+def train_loop(epoch, dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
+    num_batches = len(dataloader)
+    train_loss, train_correct = 0, 0
+    log_frequency = 50
+
     for batch, (X, y) in enumerate(dataloader):
         # move to device
         X = X.to(device)
@@ -50,16 +59,37 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         loss.backward()
         optimizer.step()
 
-        # update information print
-        if batch % 10 == 0:
-            loss, current = loss.item(), batch * len(X)
-            print(f"loss: {loss:>7f}  [{current:>6d}/{size:>6d}]")
+        # aggregate log data
+        train_loss += loss.item()
+        train_correct += (pred.argmax(1) == y).type(torch.float).sum().item() / len(X)
+
+        # log info to tensorboard and console
+        if batch % log_frequency == 0 and batch != 0:
+            # average data
+            train_loss /= log_frequency
+            train_correct /= log_frequency / 100.0
+
+            # tensorboard logs
+            writer.add_scalar("Loss/train", train_loss, epoch * num_batches + batch)
+            writer.add_scalar(
+                "Accuracy(%)/train",
+                train_correct,
+                epoch * num_batches + batch,
+            )
+
+            # console logs
+            print(
+                f"Accuracy: {(train_correct):>0.1f}%, loss: {train_loss:>7f}  [{batch * len(X):>6d}/{size:>6d}]"
+            )
+
+            # reset counters
+            train_loss, train_correct = 0, 0
 
 
-def test_loop(dataloader, model, loss_fn):
+def val_loop(epoch, dataloader, model, loss_fn):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
-    test_loss, correct = 0, 0
+    val_loss, val_correct = 0, 0
 
     with torch.no_grad():
         for X, y in dataloader:
@@ -69,13 +99,20 @@ def test_loop(dataloader, model, loss_fn):
 
             # test
             pred = model(X)
-            test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+            val_loss += loss_fn(pred, y).item()
+            val_correct += (pred.argmax(1) == y).type(torch.float).sum().item()
 
-    test_loss /= num_batches
-    correct /= size
+    # average data
+    val_loss /= num_batches
+    val_correct /= size / 100.0
+
+    # tensorboard logs
+    writer.add_scalar("Accuracy(%)/test", val_correct, epoch)
+    writer.add_scalar("Loss/test", val_loss, epoch)
+
+    # console logs
     print(
-        f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n"
+        f"Validation Phase: \n Accuracy: {(val_correct):>0.1f}%, Avg loss: {val_loss:>8f} \n"
     )
 
 
@@ -97,19 +134,22 @@ if __name__ == "__main__":
 
     # datasets
     training_data = CustomDataset(path_to_target_folder_for_transformed_data, "train")
-    test_data = CustomDataset(path_to_target_folder_for_transformed_data, "val")
+    val_data = CustomDataset(path_to_target_folder_for_transformed_data, "val")
 
     # dataloaders
-    train_dataloader = DataLoader(training_data, batch_size=batch_size)
-    test_dataloader = DataLoader(test_data, batch_size=batch_size)
+    train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
+    val_dataloader = DataLoader(val_data, batch_size=batch_size)
 
     # train it like it's hot
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
-        train_loop(train_dataloader, model, loss_fn, optimizer)
-        test_loop(test_dataloader, model, loss_fn)
+        train_loop(t, train_dataloader, model, loss_fn, optimizer)
+        val_loop(t, val_dataloader, model, loss_fn)
     print("Done!")
 
     # store the model
     print("Saving: ")
     torch.save(model, "model.pth")
+
+    # close the writer
+    writer.close()

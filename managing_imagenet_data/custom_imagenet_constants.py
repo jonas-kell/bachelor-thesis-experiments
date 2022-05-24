@@ -11,3 +11,5 @@ path_to_validation_solution_file = "/media/jonas/69B577D0C4C25263/MLData/imagene
 
 train_folder_name = "train"
 val_folder_name = "val"
+
+tensorboard_log_folder = "/media/jonas/69B577D0C4C25263/MLData/tensorboard"
