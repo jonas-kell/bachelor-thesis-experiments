@@ -126,7 +126,7 @@ if __name__ == "__main__":
 
     # hyperparameters
     learning_rate = 1e-3
-    epochs = 40  # epoch: train loop + validation/test
+    epochs = 80  # epoch: train loop + validation/test
     batch_size = 128
 
     loss_fn = nn.CrossEntropyLoss()
@@ -142,14 +142,18 @@ if __name__ == "__main__":
 
     # train it like it's hot
     for t in range(epochs):
+        # run an epoch
         print(f"Epoch {t+1}\n-------------------------------")
         train_loop(t, train_dataloader, model, loss_fn, optimizer)
         val_loop(t, val_dataloader, model, loss_fn)
-    print("Done!")
 
-    # store the model
-    print("Saving: ")
-    torch.save(model, "model.pth")
+        # store the model
+        print("Saving: ")
+        torch.save(
+            model,
+            os.path.join(tensorboard_log_folder, run_name, "model_" + str(t) + ".pth"),
+        )
+    print("Done!")
 
     # close the writer
     writer.close()
