@@ -1,5 +1,6 @@
 import os
 import datetime
+import time
 
 import torch
 from torch import nn
@@ -43,12 +44,18 @@ def train_loop(epoch, dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     train_loss, train_correct = 0, 0
+    loading_time, processing_time = 0, 0
     log_frequency = 50
 
+    start_loading_time = time.time()
     for batch, (X, y) in enumerate(dataloader):
         # move to device
         X = X.to(device)
         y = y.to(device)
+
+        # timing
+        start_processing_time = end_loading_time = time.time()
+        loading_time += end_loading_time - start_loading_time
 
         # Compute prediction and loss
         pred = model(X)
@@ -63,27 +70,40 @@ def train_loop(epoch, dataloader, model, loss_fn, optimizer):
         train_loss += loss.item()
         train_correct += (pred.argmax(1) == y).type(torch.float).sum().item() / len(X)
 
+        # timing
+        end_processing_time = time.time()
+        processing_time += end_processing_time - start_processing_time
+
         # log info to tensorboard and console
         if batch % log_frequency == 0 and batch != 0:
             # average data
             train_loss /= log_frequency
             train_correct /= log_frequency / 100.0
+            loading_time /= log_frequency / 1000.0
+            processing_time /= log_frequency / 1000.0
 
             # tensorboard logs
             writer.add_scalar("Loss/train", train_loss, epoch * num_batches + batch)
             writer.add_scalar(
-                "Accuracy(%)/train",
-                train_correct,
-                epoch * num_batches + batch,
+                "Accuracy(%)/train", train_correct, epoch * num_batches + batch
+            )
+            writer.add_scalar(
+                "Time(ms)/load", loading_time, epoch * num_batches + batch
+            )
+            writer.add_scalar(
+                "Time(ms)/process", processing_time, epoch * num_batches + batch
             )
 
             # console logs
             print(
-                f"Accuracy: {(train_correct):>0.1f}%, loss: {train_loss:>7f}  [{batch * len(X):>6d}/{size:>6d}]"
+                f"Accuracy: {(train_correct):>0.1f}%, loss: {train_loss:>7f}  [{batch * len(X):>6d}/{size:>6d}]   load: {loading_time:>4f}ms, process: {processing_time:>4f}ms"
             )
 
             # reset counters
-            train_loss, train_correct = 0, 0
+            train_loss, train_correct, loading_time, processing_time = 0, 0, 0, 0
+
+        # timing
+        start_loading_time = time.time()
 
 
 def val_loop(epoch, dataloader, model, loss_fn):
