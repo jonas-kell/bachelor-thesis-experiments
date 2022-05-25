@@ -10,7 +10,7 @@ from mapping import synset_id_from_vector_index, description_from_vector_index
 
 # the used model definition must be available in a file in the following folder
 sys.path.append(
-    "/media/jonas/69B577D0C4C25263/MLData/tensorboard/test_at_2022-05-25--02-29-14/"
+    "/media/jonas/69B577D0C4C25263/MLData/tensorboard/ML-Perceptron-RandSize/"
 )
 # the file must be named 'model.py' and the network class 'NeuralNetwork'
 from model import NeuralNetwork
@@ -43,7 +43,7 @@ def evaluate_model(path_to_model_data, preprocessing_transformation):
         plt.waitforbuttonpress()
 
         # normalizing transformation
-        tensor = resize_normalize(img)
+        tensor = preprocessing_transformation(img)
         plt.title(
             "Normalized image: " + file_name,
         )
@@ -82,6 +82,6 @@ def evaluate_model(path_to_model_data, preprocessing_transformation):
 
 if __name__ == "__main__":
     evaluate_model(
-        "/media/jonas/69B577D0C4C25263/MLData/tensorboard/test_at_2022-05-25--02-29-14/model_38.pth",
+        "/media/jonas/69B577D0C4C25263/MLData/tensorboard/ML-Perceptron-RandSize/model_38.pth",
         resize_normalize,
     )
