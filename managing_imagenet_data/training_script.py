@@ -157,8 +157,11 @@ if __name__ == "__main__":
     val_data = CustomDataset(path_to_target_folder_for_transformed_data, "val")
 
     # dataloaders
-    train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
-    val_dataloader = DataLoader(val_data, batch_size=batch_size)
+    nr_workers = 2
+    train_dataloader = DataLoader(
+        training_data, batch_size=batch_size, shuffle=True, num_workers=nr_workers
+    )
+    val_dataloader = DataLoader(val_data, batch_size=batch_size, num_workers=nr_workers)
 
     # train it like it's hot
     for t in range(epochs):
