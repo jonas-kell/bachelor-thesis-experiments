@@ -158,10 +158,22 @@ if __name__ == "__main__":
 
     # dataloaders
     nr_workers = 2
+    pin_memory = (
+        device == "cuda" and False
+    )  # disabled, as this doesn't seem to help here
     train_dataloader = DataLoader(
-        training_data, batch_size=batch_size, shuffle=True, num_workers=nr_workers
+        training_data,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=nr_workers,
+        pin_memory=pin_memory,
     )
-    val_dataloader = DataLoader(val_data, batch_size=batch_size, num_workers=nr_workers)
+    val_dataloader = DataLoader(
+        val_data,
+        batch_size=batch_size,
+        num_workers=nr_workers,
+        pin_memory=pin_memory,
+    )
 
     # train it like it's hot
     for t in range(epochs):
