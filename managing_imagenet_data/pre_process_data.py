@@ -13,6 +13,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import torch
 from alive_progress import alive_bar
+from transformations import resize_normalize, normalize_inverse
 
 
 def transform_training_data(transformation):
@@ -146,29 +147,12 @@ def transform_validation_data(transformation):
 def show_image_from_transformed_stored_tensor(path):
     tensor = torch.load(path)
 
-    inv_trans = transforms.Compose(
-        [
-            transforms.Normalize(
-                mean=[0.0, 0.0, 0.0], std=[1 / 0.229, 1 / 0.224, 1 / 0.225]
-            ),
-            transforms.Normalize(mean=[-0.485, -0.456, -0.406], std=[1.0, 1.0, 1.0]),
-        ]
-    )
-
-    plt.imshow(transforms.ToPILImage()(inv_trans(tensor)))
+    plt.imshow(transforms.ToPILImage()(normalize_inverse(tensor)))
     plt.waitforbuttonpress()
 
 
 if __name__ == "__main__":
-    transformation = transforms.Compose(
-        [
-            transforms.Resize((224, 224)),
-            transforms.PILToTensor(),
-            transforms.ConvertImageDtype(torch.float),
-            # these are the image net means ->
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-        ],
-    )
+    transformation = resize_normalize
 
     # transform_training_data(transformation)
     # transform_validation_data(transformation)
