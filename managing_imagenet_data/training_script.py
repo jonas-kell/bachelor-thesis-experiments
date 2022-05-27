@@ -44,19 +44,28 @@ class NeuralNetwork(nn.Module):
 def train_loop(epoch, dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
-    train_loss, train_correct = 0, 0
-    loading_time, processing_time = 0, 0
+    train_loss, train_correct, loading_time_hdd, loading_time_gpu, processing_time = (
+        0,
+        0,
+        0,
+        0,
+        0,
+    )
     log_frequency = 50
 
-    start_loading_time = time.time()
+    start_loading_time_hdd = time.time()
     for batch, (X, y) in enumerate(dataloader):
+        # timing
+        start_loading_time_gpu = end_loading_time_hdd = time.time()
+        loading_time_hdd += end_loading_time_hdd - start_loading_time_hdd
+
         # move to device
         X = X.to(device)
         y = y.to(device)
 
         # timing
-        start_processing_time = end_loading_time = time.time()
-        loading_time += end_loading_time - start_loading_time
+        start_processing_time = end_loading_time_gpu = time.time()
+        loading_time_gpu += end_loading_time_gpu - start_loading_time_gpu
 
         # Compute prediction and loss
         pred = model(X)
@@ -80,7 +89,8 @@ def train_loop(epoch, dataloader, model, loss_fn, optimizer):
             # average data
             train_loss /= log_frequency
             train_correct /= log_frequency / 100.0
-            loading_time /= log_frequency / 1000.0
+            loading_time_hdd /= log_frequency / 1000.0
+            loading_time_gpu /= log_frequency / 1000.0
             processing_time /= log_frequency / 1000.0
 
             # tensorboard logs
@@ -89,7 +99,10 @@ def train_loop(epoch, dataloader, model, loss_fn, optimizer):
                 "Accuracy(%)/train", train_correct, epoch * num_batches + batch
             )
             writer.add_scalar(
-                "Time(ms)/load", loading_time, epoch * num_batches + batch
+                "Time(ms)/load_hdd", loading_time_hdd, epoch * num_batches + batch
+            )
+            writer.add_scalar(
+                "Time(ms)/load_gpu", loading_time_gpu, epoch * num_batches + batch
             )
             writer.add_scalar(
                 "Time(ms)/process", processing_time, epoch * num_batches + batch
@@ -97,14 +110,20 @@ def train_loop(epoch, dataloader, model, loss_fn, optimizer):
 
             # console logs
             print(
-                f"Accuracy: {(train_correct):>0.1f}%, loss: {train_loss:>7f}  [{batch * len(X):>6d}/{size:>6d}]   load: {loading_time:>4f}ms, process: {processing_time:>4f}ms"
+                f"Accuracy: {(train_correct):>0.1f}%, loss: {train_loss:>7f}  [{batch * len(X):>6d}/{size:>6d}]   load_hdd: {loading_time_hdd:>4f}ms, load_gpu: {loading_time_gpu:>4f}ms, process: {processing_time:>4f}ms"
             )
 
             # reset counters
-            train_loss, train_correct, loading_time, processing_time = 0, 0, 0, 0
+            (
+                train_loss,
+                train_correct,
+                loading_time_hdd,
+                loading_time_gpu,
+                processing_time,
+            ) = (0, 0, 0, 0, 0)
 
         # timing
-        start_loading_time = time.time()
+        start_loading_time_hdd = time.time()
 
 
 def val_loop(epoch, dataloader, model, loss_fn):
