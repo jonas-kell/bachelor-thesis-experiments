@@ -13,7 +13,8 @@ from custom_imagenet_constants import (
     tensorboard_log_folder,
 )
 
-run_name = "test_at_" + datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
+run_date = datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
+run_name = "test_at_" + run_date
 writer = SummaryWriter(os.path.join(tensorboard_log_folder, run_name), flush_secs=1)
 
 
@@ -146,25 +147,40 @@ if __name__ == "__main__":
 
     # hyperparameters
     learning_rate = 1e-3
+    momentum = 0
+    dampening = 0
+    weight_decay = 0
     epochs = 80  # epoch: train loop + validation/test
     batch_size = 128
 
-    loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    loss_fn_name = "cross_entropy_loss"
+    if loss_fn_name == "cross_entropy_loss":
+        loss_fn = nn.CrossEntropyLoss()
+
+    optimizer_name = "sgd"
+    if optimizer_name == "sgd":
+        optimizer = torch.optim.SGD(
+            model.parameters(),
+            lr=learning_rate,
+            momentum=momentum,
+            dampening=dampening,
+            weight_decay=weight_decay,
+        )
 
     # datasets
     training_data = CustomDataset(path_to_target_folder_for_transformed_data, "train")
     val_data = CustomDataset(path_to_target_folder_for_transformed_data, "val")
 
     # dataloaders
-    nr_workers = 2
+    nr_workers = 0
     pin_memory = (
         device == "cuda" and False
     )  # disabled, as this doesn't seem to help here
+    shuffle = True
     train_dataloader = DataLoader(
         training_data,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=shuffle,
         num_workers=nr_workers,
         pin_memory=pin_memory,
     )
@@ -173,6 +189,27 @@ if __name__ == "__main__":
         batch_size=batch_size,
         num_workers=nr_workers,
         pin_memory=pin_memory,
+    )
+
+    # log hyperparameters to file
+    writer.add_hparams(
+        {
+            "max_epochs": epochs,
+            "batch_size": batch_size,
+            "loss_fn": loss_fn_name,
+            "optimizer": optimizer_name,
+            "learning_rate": learning_rate,
+            "momentum": momentum,
+            "dampening": dampening,
+            "weight_decay": weight_decay,
+            "nr_workers": nr_workers,
+            "pin_memory": pin_memory,
+            "shuffle": shuffle,
+        },
+        {
+            "placeholder": 0
+        },  # the hyperparameter module is used normally to compare used hyperparamaters for multiple runs in one "script-execution". I can only get information about the interesting metrics (loss/accuracy/...) after my model has trained sufficiently long. It may crash or be aborted earlier however, what would result in not writing the corresponding hyperparameter entry. As the evaluating is done manually anyway, just a placeholder metric is inserted, to allow for the logging of hyperparameters for now. (no metric results in nothing being logged/displayed at all)
+        run_name=run_date,
     )
 
     # train it like it's hot
