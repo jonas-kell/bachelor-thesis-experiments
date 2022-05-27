@@ -1,6 +1,7 @@
 import os
 import datetime
 import time
+import traceback
 
 import torch
 from torch import nn
@@ -191,7 +192,7 @@ if __name__ == "__main__":
     val_data = CustomDataset(path_to_target_folder_for_transformed_data, "val")
 
     # dataloaders
-    nr_workers = 0
+    nr_workers = 2
     pin_memory = (
         device == "cuda" and False
     )  # disabled, as this doesn't seem to help here
@@ -234,16 +235,35 @@ if __name__ == "__main__":
     # train it like it's hot
     for t in range(epochs):
         # run an epoch
-        print(f"Epoch {t+1}\n-------------------------------")
-        train_loop(t, train_dataloader, model, loss_fn, optimizer)
-        val_loop(t, val_dataloader, model, loss_fn)
+        epoch_message = f"Epoch {t+1}"
+        print(epoch_message + "\n-------------------------------")
+        writer.add_text("epoch", epoch_message)
+
+        try:
+            train_loop(t, train_dataloader, model, loss_fn, optimizer)
+        except Exception as exc:
+            writer.add_text("error_train", traceback.format_exc())
+            raise exc
+
+        try:
+            val_loop(t, val_dataloader, model, loss_fn)
+        except Exception as exc:
+            writer.add_text("error_val", traceback.format_exc())
+            raise exc
 
         # store the model
         print("Saving: ")
-        torch.save(
-            model,
-            os.path.join(tensorboard_log_folder, run_name, "model_" + str(t) + ".pth"),
-        )
+        try:
+            torch.save(
+                model,
+                os.path.join(
+                    tensorboard_log_folder, run_name, "model_" + str(t) + ".pth"
+                ),
+            )
+        except Exception as exc:
+            writer.add_text("error_save", traceback.format_exc())
+            raise exc
+
     print("Done!")
 
     # close the writer
