@@ -229,7 +229,7 @@ if __name__ == "__main__":
         {
             "placeholder": 0
         },  # the hyperparameter module is used normally to compare used hyperparamaters for multiple runs in one "script-execution". I can only get information about the interesting metrics (loss/accuracy/...) after my model has trained sufficiently long. It may crash or be aborted earlier however, what would result in not writing the corresponding hyperparameter entry. As the evaluating is done manually anyway, just a placeholder metric is inserted, to allow for the logging of hyperparameters for now. (no metric results in nothing being logged/displayed at all)
-        run_name=run_date,
+        run_name="./",
     )
 
     # train it like it's hot
