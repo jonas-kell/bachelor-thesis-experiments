@@ -2,6 +2,7 @@ import os
 import datetime
 import time
 import traceback
+import sys
 
 import torch
 from torch import nn
@@ -13,6 +14,9 @@ from custom_imagenet_constants import (
     path_to_target_folder_for_transformed_data,
     tensorboard_log_folder,
 )
+
+sys.path.append("./../slack")
+from message import post_message_to_slack
 
 run_date = datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
 run_name = "test_at_" + run_date
@@ -232,6 +236,9 @@ if __name__ == "__main__":
         run_name="./",
     )
 
+    # slack
+    post_message_to_slack("Training started")
+
     # train it like it's hot
     for t in range(epochs):
         # run an epoch
@@ -243,12 +250,14 @@ if __name__ == "__main__":
             train_loop(t, train_dataloader, model, loss_fn, optimizer)
         except Exception as exc:
             writer.add_text("error_train", traceback.format_exc())
+            post_message_to_slack("Error: error_train")
             raise exc
 
         try:
             val_loop(t, val_dataloader, model, loss_fn)
         except Exception as exc:
             writer.add_text("error_val", traceback.format_exc())
+            post_message_to_slack("Error: error_val")
             raise exc
 
         # store the model
@@ -262,9 +271,12 @@ if __name__ == "__main__":
             )
         except Exception as exc:
             writer.add_text("error_save", traceback.format_exc())
+            post_message_to_slack("Error: error_save")
             raise exc
 
     print("Done!")
+    # slack
+    post_message_to_slack("Training completed")
 
     # close the writer
     writer.close()
