@@ -12,8 +12,12 @@ from mapping import synset_id_from_vector_index, description_from_vector_index
 sys.path.append(
     "/media/jonas/69B577D0C4C25263/MLData/tensorboard/ML-Perceptron-RandSize/"
 )
-# the file must be named 'model.py' and the network class 'NeuralNetwork'
+sys.path.append("/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/")
+
+# ML-Perceptron: the file must be named 'model.py' and the network class 'NeuralNetwork'
 from model import NeuralNetwork
+
+# Transformer-tests: can be importet, if the path to DINO-CLASSIFIER/vision_transformer.py is set
 
 
 def evaluate_model(path_to_model_data, preprocessing_transformation):
@@ -70,6 +74,7 @@ def evaluate_model(path_to_model_data, preprocessing_transformation):
                     + str(i + 1)
                     + ": "
                     + str(index)
+                    + f"({(pred[0][index].item()):>0.3f})"
                     + " -> "
                     + synset_id_from_vector_index(index)
                     + " : "
@@ -81,7 +86,16 @@ def evaluate_model(path_to_model_data, preprocessing_transformation):
 
 
 if __name__ == "__main__":
+    # model_path = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/ML-Perceptron-RandSize/model_38.pth"
+    model_path = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/momentum_0.9/model_29.pth"
+    # model_path = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/momentum_0/model_51.pth"
+    # model_path = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0/model_60.pth"
+    # model_path = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0.1/model_54.pth"
+    # model_path = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0.9/model_24.pth"
+
+    print("using model: " + model_path + " to evaluate images")
+
     evaluate_model(
-        "/media/jonas/69B577D0C4C25263/MLData/tensorboard/ML-Perceptron-RandSize/model_38.pth",
+        model_path,
         resize_normalize,
     )
