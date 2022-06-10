@@ -14,6 +14,7 @@ from train.training_script import train_model
 from managing_imagenet_data.pre_process_data import (
     transform_validation_data,
     transform_training_data,
+    show_image_from_transformed_stored_tensor,
 )
 from transformations import resize_normalize
 from PathAndFolderConstants import PathAndFolderConstants
@@ -104,14 +105,26 @@ if __name__ == "__main__":
             raise Exception("No Model path specified")
 
         evaluate(device, path_to_model_file, mapper)
+
+    elif type_of_operation == "show":
+        path_to_tensor_file = "" if len(sys.argv) < 3 else sys.argv[2]
+
+        if path_to_tensor_file == "":
+            raise Exception("No Tensor path specified")
+
+        show_image_from_transformed_stored_tensor(path_to_tensor_file)
     else:
         print("Unknown operation, please specify")
 
 # Example model paths for my system
 
-# model_path = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/ML-Perceptron-RandSize/model_38.pth"
-# model_path = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/momentum_0.9/model_29.pth"
-# model_path = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/momentum_0/model_51.pth"
-# model_path = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0/model_60.pth"
-# model_path = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0.1/model_54.pth"
-# model_path = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0.9/model_24.pth"
+# path_to_model_file = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/ML-Perceptron-RandSize/model_38.pth"
+# path_to_model_file = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/momentum_0.9/model_29.pth"
+# path_to_model_file = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/momentum_0/model_51.pth"
+# path_to_model_file = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0/model_60.pth"
+# path_to_model_file = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0.1/model_54.pth"
+# path_to_model_file = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0.9/model_24.pth"
+
+# Example show paths for my system
+
+# path_to_tensor_file = "/media/jonas/69B577D0C4C25263/MLData/transformed2/val/n01443537_00032258.pt

@@ -12,7 +12,9 @@ from transformations import normalize_inverse
 def transform_training_data(
     transformation, constants: PathAndFolderConstants, mapper: SynsetMapper
 ):
-    if not constants.train_folder_name in os.listdir(constants.path_to_imagenet_data):
+    if not constants.train_folder_name in os.listdir(
+        constants.path_to_imagenet_data_folder
+    ):
         raise Exception(
             "the folder must directly contain the 'train' folder in the format of imagenet"
         )
@@ -160,9 +162,3 @@ def show_image_from_transformed_stored_tensor(path):
 
     plt.imshow(transforms.ToPILImage()(normalize_inverse(tensor)))
     plt.waitforbuttonpress()
-
-
-if __name__ == "__main__":
-    show_image_from_transformed_stored_tensor(
-        "/media/jonas/69B577D0C4C25263/MLData/transformed/val/n01806143_00037524.pt"
-    )
