@@ -46,9 +46,10 @@ def train(
     device: Literal["cuda", "cpu"],
     network: nn.Module,
     constants: PathAndFolderConstants,
+    mapper: SynsetMapper,
     **kwargs,
 ):
-    train_model(device, network, constants, **kwargs)
+    train_model(device, network, constants, mapper, **kwargs)
 
 
 def evaluate(
@@ -94,7 +95,7 @@ if __name__ == "__main__":
                 )
                 args_to_pass[split[0]] = split[1]
 
-        train(device, vit_custom, constants, **args_to_pass)
+        train(device, vit_custom(), constants, mapper, **args_to_pass)
 
     elif type_of_operation == "eval":
         print("Evaluate model")

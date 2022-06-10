@@ -13,6 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from CustomDataset import CustomDataset
 from PathAndFolderConstants import PathAndFolderConstants
+from SynsetMapper import SynsetMapper
 from message import post_message_to_slack
 
 
@@ -135,6 +136,7 @@ def train_model(
     device: Literal["cuda", "cpu"],
     network: nn.Module,
     constants: PathAndFolderConstants,
+    mapper: SynsetMapper,
     learning_rate: float = 1e-3,
     momentum: float = 0,
     dampening: float = 0,
@@ -160,12 +162,8 @@ def train_model(
         )
 
     # datasets
-    training_data = CustomDataset(
-        constants.path_to_folder_for_transformed_data, constants.train_folder_name
-    )
-    val_data = CustomDataset(
-        constants.path_to_folder_for_transformed_data, constants.val_folder_name
-    )
+    training_data = CustomDataset(constants, mapper, constants.train_folder_name)
+    val_data = CustomDataset(constants, mapper, constants.val_folder_name)
 
     # dataloaders
     nr_workers = 4

@@ -13,7 +13,7 @@ class CustomDataset(torch.utils.data.Dataset):
 
         if mode not in [
             constants.train_folder_name,
-            constants.nr_categoriesval_folder_name,
+            constants.val_folder_name,
         ]:
             raise Exception(
                 "only modes '"
