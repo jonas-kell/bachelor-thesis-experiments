@@ -1,27 +1,34 @@
 import torch
 import os
-from custom_imagenet_constants import (
-    train_folder_name,
-    val_folder_name,
-)
-from mapping import vector_index_from_synset_id
+
+from PathAndFolderConstants import PathAndFolderConstants
+from SynsetMapper import SynsetMapper
 
 
 class CustomDataset(torch.utils.data.Dataset):
-    def __init__(self, root_folder_path, mode="train"):
-        if mode not in [train_folder_name, val_folder_name]:
+    def __init__(
+        self, constants: PathAndFolderConstants, mapper: SynsetMapper, mode="train"
+    ):
+        self.mapper = mapper
+
+        if mode not in [
+            constants.train_folder_name,
+            constants.nr_categoriesval_folder_name,
+        ]:
             raise Exception(
                 "only modes '"
-                + train_folder_name
+                + constants.train_folder_name
                 + "' and '"
-                + val_folder_name
+                + constants.val_folder_name
                 + "' are supported"
             )
         self.mode = mode
 
-        if not mode in os.listdir(root_folder_path):
-            raise Exception("folder '" + mode + "' not present in the root folder")
-        self.root_folder_path = root_folder_path
+        if not mode in os.listdir(constants.path_to_folder_for_transformed_data):
+            raise Exception(
+                "folder '" + mode + "' not present in the preprocessed-data folder"
+            )
+        self.root_folder_path = constants.path_to_folder_for_transformed_data
 
         self.folder_path = os.path.join(self.root_folder_path, self.mode)
 
@@ -36,6 +43,6 @@ class CustomDataset(torch.utils.data.Dataset):
         )  # load the features of this sample
 
         label = self.files[idx].split("_", 1)[0]
-        class_id = vector_index_from_synset_id(label)
+        class_id = self.mapper.vector_index_from_synset_id(label)
 
         return (sample, class_id)

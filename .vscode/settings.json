@@ -17,5 +17,6 @@
         "**/*-blx.bib": true,
         "**/_minted*": true,
         "**/__pycache__": true
-    }
+    },
+    "python.analysis.extraPaths": ["./slack", "./managing_imagenet_data"]
 }

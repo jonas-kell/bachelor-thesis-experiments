@@ -1,4 +1,4 @@
-slack_token = "xoxb-3593791598916-3615419802016-6nDeUa8FR8Bfien3r5Cr1Dzk"
+slack_token = "xoxb-3593791598916-3615419802016-6nDeUa8FR8Bfien3r5Cr1Dzk"  # hardcoded token, channel will get deleted afterwards, if I forget, send me a message in the channel ;-)
 slack_channel = "#machine-learning"
 slack_icon_emoji = ":see_no_evil:"
 slack_user_name = "ML-Notifications"

@@ -1,42 +1,41 @@
 import os
-from custom_imagenet_constants import (
-    path_to_imagenet_data,
-    path_to_target_folder_for_transformed_data,
-    train_folder_name,
-    val_folder_name,
-    nr_categories,
-    path_to_validation_solution_file,
-)
-from mapping import all_used_synset_ids, synset_id_from_vector_index
+from PathAndFolderConstants import PathAndFolderConstants
 import torchvision.transforms as transforms
 from PIL import Image
 import matplotlib.pyplot as plt
 import torch
 from alive_progress import alive_bar
-from transformations import resize_normalize, normalize_inverse
+from SynsetMapper import SynsetMapper
+from transformations import normalize_inverse
 
 
-def transform_training_data(transformation):
-    if not train_folder_name in os.listdir(path_to_imagenet_data):
+def transform_training_data(
+    transformation, constants: PathAndFolderConstants, mapper: SynsetMapper
+):
+    if not constants.train_folder_name in os.listdir(constants.path_to_imagenet_data):
         raise Exception(
             "the folder must directly contain the 'train' folder in the format of imagenet"
         )
 
     path_to_train_target_folder = os.path.join(
-        path_to_target_folder_for_transformed_data, train_folder_name
+        constants.path_to_folder_for_transformed_data, constants.train_folder_name
     )
-    if not train_folder_name in os.listdir(path_to_target_folder_for_transformed_data):
+    if not constants.train_folder_name in os.listdir(
+        constants.path_to_folder_for_transformed_data
+    ):
         os.mkdir(path_to_train_target_folder)
     if len(os.listdir(path_to_train_target_folder)) != 0:
         raise Exception("The 'train' folder in the target directory must be empty")
 
     # total number of images
     total_nr_images = 0
-    for idx in range(nr_categories):
-        synset_id = synset_id_from_vector_index(idx)
+    for idx in range(constants.nr_categories):
+        synset_id = mapper.synset_id_from_vector_index(idx)
 
         folder_with_training_data = os.path.join(
-            path_to_imagenet_data, train_folder_name, synset_id
+            constants.path_to_imagenet_data_folder,
+            constants.train_folder_name,
+            synset_id,
         )
 
         image_file_names = os.listdir(folder_with_training_data)
@@ -45,11 +44,13 @@ def transform_training_data(transformation):
 
     # transformations
     with alive_bar(total_nr_images) as bar:
-        for idx in range(nr_categories):
-            synset_id = synset_id_from_vector_index(idx)
+        for idx in range(constants.nr_categories):
+            synset_id = mapper.synset_id_from_vector_index(idx)
 
             folder_with_training_data = os.path.join(
-                path_to_imagenet_data, train_folder_name, synset_id
+                constants.path_to_imagenet_data_folder,
+                constants.train_folder_name,
+                synset_id,
             )
 
             image_file_names = os.listdir(folder_with_training_data)
@@ -66,8 +67,8 @@ def transform_training_data(transformation):
                     torch.save(
                         tensor,
                         os.path.join(
-                            path_to_target_folder_for_transformed_data,
-                            train_folder_name,
+                            constants.path_to_folder_for_transformed_data,
+                            constants.train_folder_name,
                             name + ".pt",
                         ),
                     )
@@ -77,27 +78,37 @@ def transform_training_data(transformation):
                 bar()  # advance progress bar
 
 
-def transform_validation_data(transformation):
-    if not val_folder_name in os.listdir(path_to_imagenet_data):
+def transform_validation_data(
+    transformation, constants: PathAndFolderConstants, mapper: SynsetMapper
+):
+    if not constants.val_folder_name in os.listdir(
+        constants.path_to_imagenet_data_folder
+    ):
         raise Exception(
             "the folder must directly contain the 'val' folder in the format of imagenet"
         )
 
     path_to_validation_target_folder = os.path.join(
-        path_to_target_folder_for_transformed_data, val_folder_name
+        constants.path_to_folder_for_transformed_data, constants.val_folder_name
     )
-    if not val_folder_name in os.listdir(path_to_target_folder_for_transformed_data):
+    if not constants.val_folder_name in os.listdir(
+        constants.path_to_folder_for_transformed_data
+    ):
         os.mkdir(path_to_validation_target_folder)
     if len(os.listdir(path_to_validation_target_folder)) != 0:
         raise Exception("The 'val' folder in the target directory must be empty")
 
     # total number of images
     total_nr_images = len(
-        os.listdir(os.path.join(path_to_imagenet_data, val_folder_name))
+        os.listdir(
+            os.path.join(
+                constants.path_to_imagenet_data_folder, constants.val_folder_name
+            )
+        )
     )
 
     # pre-allocate info about the solutions
-    f = open(path_to_validation_solution_file, "r")
+    f = open(constants.path_to_validation_solution_file, "r")
     contents = f.read().splitlines()
     contents.pop(0)  # remove first line (csv descriptors)
     f.close()
@@ -110,7 +121,7 @@ def transform_validation_data(transformation):
     # transformations
     with alive_bar(total_nr_images) as bar:
         folder_with_validation_data = os.path.join(
-            path_to_imagenet_data, val_folder_name
+            constants.path_to_imagenet_data_folder, constants.val_folder_name
         )
 
         image_file_names = os.listdir(folder_with_validation_data)
@@ -127,13 +138,13 @@ def transform_validation_data(transformation):
                 val_index = name.split("_", 2)[2]
 
                 # only validation data for used synsets needed
-                if solution_synset in all_used_synset_ids():
+                if solution_synset in mapper.all_used_synset_ids():
                     tensor = transformation(img)
                     torch.save(
                         tensor,
                         os.path.join(
-                            path_to_target_folder_for_transformed_data,
-                            val_folder_name,
+                            constants.path_to_folder_for_transformed_data,
+                            constants.val_folder_name,
                             solution_synset + "_" + val_index + ".pt",
                         ),
                     )
@@ -152,11 +163,6 @@ def show_image_from_transformed_stored_tensor(path):
 
 
 if __name__ == "__main__":
-    transformation = resize_normalize
-
-    # transform_training_data(transformation)
-    # transform_validation_data(transformation)
-
-    # show_image_from_transformed_stored_tensor(
-    #     "/media/jonas/69B577D0C4C25263/MLData/transformed/val/n01806143_00037524.pt"
-    # )
+    show_image_from_transformed_stored_tensor(
+        "/media/jonas/69B577D0C4C25263/MLData/transformed/val/n01806143_00037524.pt"
+    )

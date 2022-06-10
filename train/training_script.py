@@ -2,51 +2,21 @@ import os
 import datetime
 import time
 import traceback
-import sys
+from typing import Literal
+
 
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from CustomDataset import CustomDataset
-from custom_imagenet_constants import (
-    path_to_target_folder_for_transformed_data,
-    tensorboard_log_folder,
-)
 
-sys.path.append("./../slack")
+from CustomDataset import CustomDataset
+from PathAndFolderConstants import PathAndFolderConstants
 from message import post_message_to_slack
 
-run_date = datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
-run_name = "test_at_" + run_date
-writer = SummaryWriter(os.path.join(tensorboard_log_folder, run_name), flush_secs=1)
 
-
-class NeuralNetwork(nn.Module):
-    def __init__(self):
-        super(NeuralNetwork, self).__init__()
-        self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(224 * 224 * 3, 512 * 2),
-            nn.ReLU(),
-            nn.Linear(512 * 2, 512 * 2),
-            nn.ReLU(),
-            nn.Linear(512 * 2, 512 * 2),
-            nn.ReLU(),
-            nn.Linear(512 * 2, 100),
-        )
-
-    def forward(self, x):
-        x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits
-
-
-# ! def loops
-
-
-def train_loop(epoch, dataloader, model, loss_fn, optimizer):
+def train_loop(epoch, dataloader, model, loss_fn, optimizer, device, writer):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     train_loss, train_correct, loading_time_hdd, loading_time_gpu, processing_time = (
@@ -131,7 +101,7 @@ def train_loop(epoch, dataloader, model, loss_fn, optimizer):
         start_loading_time_hdd = time.time()
 
 
-def val_loop(epoch, dataloader, model, loss_fn):
+def val_loop(epoch, dataloader, model, loss_fn, device, writer):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     val_loss, val_correct = 0, 0
@@ -161,27 +131,25 @@ def val_loop(epoch, dataloader, model, loss_fn):
     )
 
 
-if __name__ == "__main__":
-    # device
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Using {device} device")
-
+def train_model(
+    device: Literal["cuda", "cpu"],
+    network: nn.Module,
+    constants: PathAndFolderConstants,
+    learning_rate: float = 1e-3,
+    momentum: float = 0,
+    dampening: float = 0,
+    weight_decay: float = 0,
+    epochs: int = 80,  # epoch: train loop + validation/test
+    batch_size: int = 128,
+    loss_fn_name: Literal["cross_entropy_loss"] = "cross_entropy_loss",
+    optimizer_name: Literal["sgd"] = "sgd",
+):
     # model
-    model = NeuralNetwork().to(device)
+    model = network.to(device)
 
-    # hyperparameters
-    learning_rate = 1e-3
-    momentum = 0
-    dampening = 0
-    weight_decay = 0
-    epochs = 80  # epoch: train loop + validation/test
-    batch_size = 128
-
-    loss_fn_name = "cross_entropy_loss"
     if loss_fn_name == "cross_entropy_loss":
         loss_fn = nn.CrossEntropyLoss()
 
-    optimizer_name = "sgd"
     if optimizer_name == "sgd":
         optimizer = torch.optim.SGD(
             model.parameters(),
@@ -192,14 +160,18 @@ if __name__ == "__main__":
         )
 
     # datasets
-    training_data = CustomDataset(path_to_target_folder_for_transformed_data, "train")
-    val_data = CustomDataset(path_to_target_folder_for_transformed_data, "val")
+    training_data = CustomDataset(
+        constants.path_to_folder_for_transformed_data, constants.train_folder_name
+    )
+    val_data = CustomDataset(
+        constants.path_to_folder_for_transformed_data, constants.val_folder_name
+    )
 
     # dataloaders
-    nr_workers = 2
+    nr_workers = 4
     pin_memory = (
-        device == "cuda" and False
-    )  # disabled, as this doesn't seem to help here
+        device == "cuda" and True
+    )  # faster and larger memory and easy peasy everything is faster and pinning works
     shuffle = True
     train_dataloader = DataLoader(
         training_data,
@@ -213,6 +185,13 @@ if __name__ == "__main__":
         batch_size=batch_size,
         num_workers=nr_workers,
         pin_memory=pin_memory,
+    )
+
+    # log writer
+    run_date = datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
+    run_name = "test_at_" + run_date
+    writer = SummaryWriter(
+        os.path.join(constants.path_to_tensorboard_log_folder, run_name), flush_secs=1
     )
 
     # log hyperparameters to file
@@ -247,14 +226,14 @@ if __name__ == "__main__":
         writer.add_text("epoch", epoch_message)
 
         try:
-            train_loop(t, train_dataloader, model, loss_fn, optimizer)
+            train_loop(t, train_dataloader, model, loss_fn, optimizer, device, writer)
         except Exception as exc:
             writer.add_text("error_train", traceback.format_exc())
             post_message_to_slack("Error: error_train")
             raise exc
 
         try:
-            val_loop(t, val_dataloader, model, loss_fn)
+            val_loop(t, val_dataloader, model, loss_fn, device, writer)
         except Exception as exc:
             writer.add_text("error_val", traceback.format_exc())
             post_message_to_slack("Error: error_val")
@@ -266,7 +245,9 @@ if __name__ == "__main__":
             torch.save(
                 model,
                 os.path.join(
-                    tensorboard_log_folder, run_name, "model_" + str(t) + ".pth"
+                    constants.path_to_tensorboard_log_folder,
+                    run_name,
+                    "model_" + str(t) + ".pth",
                 ),
             )
         except Exception as exc:
