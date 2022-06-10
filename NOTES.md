@@ -72,9 +72,9 @@
             nvidia-smi
             ```
     -   install [CuDNN](https://developer.nvidia.com/CUDNN):
-        -   download [this](https://developer.nvidia.com/compute/cudnn/secure/8.4.0/local_installers/11.6/cudnn-local-repo-ubuntu2004-8.4.0.27_1.0-1_amd64.deb)
+        -   download [this](https://developer.nvidia.com/compute/cudnn/secure/8.4.1/local_installers/11.6/cudnn-local-repo-ubuntu2004-8.4.1.50_1.0-1_amd64.deb)
         -   ```
-            sudo dpkg -i cudnn-local-repo-ubuntu2004-8.4.0.27_1.0-1_amd64.deb
+            sudo dpkg -i cudnn-local-repo-ubuntu2004-8.4.1.50_1.0-1_amd64.deb
             ```
     -   link GPU functionality
         -   `sudo ln -s /path/to/cuda /usr/local/cuda-11.7` (Was already linked for me)
