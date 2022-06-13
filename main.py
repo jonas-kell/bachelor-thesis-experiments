@@ -116,16 +116,3 @@ if __name__ == "__main__":
         show_image_from_transformed_stored_tensor(path_to_tensor_file)
     else:
         print("Unknown operation, please specify")
-
-# Example model paths for my system
-
-# path_to_model_file = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/ML-Perceptron-RandSize/model_38.pth"
-# path_to_model_file = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/momentum_0.9/model_29.pth"
-# path_to_model_file = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/momentum_0/model_51.pth"
-# path_to_model_file = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0/model_60.pth"
-# path_to_model_file = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0.1/model_54.pth"
-# path_to_model_file = "/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0.9/model_24.pth"
-
-# Example show paths for my system
-
-# path_to_tensor_file = "/media/jonas/69B577D0C4C25263/MLData/transformed2/val/n01443537_00032258.pt
