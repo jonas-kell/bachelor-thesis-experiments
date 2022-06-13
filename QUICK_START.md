@@ -58,7 +58,7 @@ python3 main.py train
 Additional parameters that modify the training behavior can be specified:
 
 ```cmd
-python3 main.py <<argument>>=<<value>>
+python3 main.py train <<argument>>=<<value>>
 ```
 
 At the moment the following parameters are available:

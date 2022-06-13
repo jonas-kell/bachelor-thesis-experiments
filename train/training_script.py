@@ -145,6 +145,7 @@ def train_model(
     batch_size: int = 128,
     loss_fn_name: Literal["cross_entropy_loss"] = "cross_entropy_loss",
     optimizer_name: Literal["sgd"] = "sgd",
+    model_name: str = "",  # for log purposes only !!!
 ):
     # model
     model = network.to(device)
@@ -187,7 +188,7 @@ def train_model(
 
     # log writer
     run_date = datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
-    run_name = "test_at_" + run_date
+    run_name = model_name + "_at_" + run_date
     writer = SummaryWriter(
         os.path.join(constants.path_to_tensorboard_log_folder, run_name), flush_secs=1
     )
@@ -206,6 +207,7 @@ def train_model(
             "nr_workers": nr_workers,
             "pin_memory": pin_memory,
             "shuffle": shuffle,
+            "model_name": model_name,
         },
         {
             "placeholder": 0

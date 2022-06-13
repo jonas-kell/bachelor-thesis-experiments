@@ -29,7 +29,8 @@ constants = PathAndFolderConstants(
 )
 mapper = SynsetMapper(constants)
 
-from models.vision_transformer import vit_custom
+from models.mlp import NeuralNetwork
+from models.vision_transformer import vit_custom, vit_tiny
 
 
 def prepare_data(
@@ -83,19 +84,43 @@ if __name__ == "__main__":
         supported_args = inspect.getfullargspec(train_model).args
         args_to_pass = {}
 
+        available_models = {  # add custom configurations in this dict
+            "ML-Perceptron-RandSize": NeuralNetwork,
+            "DINO-TINY": vit_tiny,
+            "DINO-CLASSIFIER": vit_custom,
+        }
+        use_model_name = list(available_models.keys())[0]
+
         for param_string in additional_parameters:
             split = param_string.split("=", 1)
 
-            if len(split) == 2 and split[0] in supported_args:
-                print(
-                    "Use additional parameter: "
-                    + str(split[0])
-                    + " with value "
-                    + str(split[1])
-                )
-                args_to_pass[split[0]] = split[1]
+            if len(split) == 2:
+                if split[0] in supported_args:
+                    print(
+                        "Use additional parameter: "
+                        + str(split[0])
+                        + " with value "
+                        + str(split[1])
+                    )
+                    args_to_pass[split[0]] = split[1]
+                if split[0] == "model":
+                    use_model_name = split[1]
 
-        train(device, vit_custom(), constants, mapper, **args_to_pass)
+        if use_model_name not in available_models.keys():
+            raise Exception(
+                "Model not configured. Try adding it to the list of supported run configurations above."
+            )
+        use_model = available_models[use_model_name]
+        print("Using the model: " + use_model_name)
+
+        train(
+            device,
+            use_model(),
+            constants,
+            mapper,
+            model_name=use_model_name,
+            **args_to_pass,
+        )
 
     elif type_of_operation == "eval":
         print("Evaluate model")
