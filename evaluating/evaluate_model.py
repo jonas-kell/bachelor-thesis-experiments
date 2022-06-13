@@ -12,7 +12,7 @@ from PIL import Image
 # the used model definition must be available in a file in the following folder
 
 
-# ML-Perceptron: the file must be named 'model.py' and the network class 'NeuralNetwork'
+# ML-Perceptron: can be importet, if the path to ML-Perceptron-RandSize/mlp.py is set
 sys.path.append(
     "/media/jonas/69B577D0C4C25263/MLData/tensorboard/ML-Perceptron-RandSize/"
 )

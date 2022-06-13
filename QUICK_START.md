@@ -24,7 +24,7 @@ python3 main.py show "<<path/to/tensor>>"
 Example show paths for my system
 
 ```
-"/media/jonas/69B577D0C4C25263/MLData/transformed2/val/n01443537_00032258.pt"
+"/media/jonas/69B577D0C4C25263/MLData/transformed/val/n01443537_00032258.pt"
 ```
 
 ### Evaluate a stored model
@@ -32,8 +32,10 @@ Example show paths for my system
 Lets you evaluate a model on custom images to check on its behavior.
 The images that you want to evaluate on, need to be placed in the appropriate folder (there is a constant for it).
 
+The model file needs to be available in the `path`. There is no clean way for this as of now. Just look into `evaluating/evaluate_model.py`.
+
 ```cmd
-python3 main.py show "<<path/to/stored/model>>"
+python3 main.py eval "<<path/to/stored/model>>"
 ```
 
 Example model paths for my system:
