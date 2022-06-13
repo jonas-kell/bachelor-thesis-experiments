@@ -48,7 +48,7 @@ def evaluate_model(
             "Original image: " + file_name,
         )
         plt.imshow(img)
-        plt.waitforbuttonpress()
+        plt.waitforbuttonpress(timeout=0.5)
 
         # normalizing transformation
         tensor = preprocessing_transformation(img)
@@ -56,7 +56,7 @@ def evaluate_model(
             "Normalized image: " + file_name,
         )
         plt.imshow(transforms.ToPILImage()(tensor))
-        plt.waitforbuttonpress()
+        plt.waitforbuttonpress(timeout=0.5)
 
         # move to device
         tensor = tensor[None, :]
