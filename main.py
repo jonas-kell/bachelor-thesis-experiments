@@ -31,6 +31,7 @@ mapper = SynsetMapper(constants)
 
 from models.mlp import NeuralNetwork
 from models.vision_transformer import vit_custom, vit_tiny
+from models.transformer import basic
 
 
 def prepare_data(
@@ -88,6 +89,7 @@ if __name__ == "__main__":
             "ML-Perceptron-RandSize": NeuralNetwork,
             "DINO-TINY": vit_tiny,
             "DINO-CLASSIFIER": vit_custom,
+            "DINO-STRIPPED": basic,
         }
         use_model_name = list(available_models.keys())[0]
 
