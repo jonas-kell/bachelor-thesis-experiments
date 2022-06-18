@@ -35,6 +35,13 @@ print("initialized variables:\n", variables)
 y, updated_state = model.apply(variables, x, mutable=["batch_stats"])
 print("updated state:\n", updated_state)
 
+for val in [1.0, 2.0, 3.0]:
+    x = val * jnp.ones((10, 5))
+    y, updated_state = model.apply(variables, x, mutable=["batch_stats"])
+    old_state, params = variables.pop("params")
+    variables = freeze({"params": params, **updated_state})
+    print("updated state:\n", updated_state)  # Shows only the mutable part
+
 
 def update_step(tx, apply_fn, x, opt_state, params, state):
     def loss(params):
