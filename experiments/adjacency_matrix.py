@@ -1,4 +1,3 @@
-from operator import index
 from typing import Literal
 from xmlrpc.client import boolean
 import numpy as np
@@ -113,3 +112,12 @@ if __name__ == "__main__":
     adjacency_matrix = nn_matrix(224 // 16)
 
     print(transform_adjacency_matrix(adjacency_matrix, True, "avg+1"))
+
+    nn = transform_adjacency_matrix(nn_matrix(3), False, "avg+1")
+    nnn = transform_adjacency_matrix(nnn_matrix(3), False, "avg+1")
+
+    # "proof" by validation, this can be pre-computed
+    # (it can be for sure, because of the addition and multiplication of matrices is distributive)
+    test = np.array(range(9))
+    print(0.5 * nn @ test + 0.2 * nnn @ test)
+    print((0.5 * nn + 0.2 * nnn) @ test)
