@@ -20,7 +20,6 @@ from functools import partial
 
 import torch
 import torch.nn as nn
-from torch import Tensor
 
 
 def drop_path(x, drop_prob: float = 0.0, training: bool = False):

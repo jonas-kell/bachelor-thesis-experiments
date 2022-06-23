@@ -4,6 +4,9 @@ import os
 from typing import Literal
 import torch
 from torch import nn
+import torch
+import random
+import numpy as np
 
 sys.path.append(os.path.abspath("./managing_imagenet_data"))
 sys.path.append(os.path.abspath("./slack"))
@@ -78,6 +81,14 @@ if __name__ == "__main__":
         prepare_data(constants, mapper)
 
     elif type_of_operation == "train":
+        # training requires rnadom numbers.
+        # They will be encountered in this file already, because here random numbers may be used in the creation of the neural networks
+        # (the functions are in the dict)
+        torch.manual_seed(0)
+        random.seed(0)
+        np.random.seed(0)
+
+        # eval script
         print("Train model")
 
         additional_parameters = [] if len(sys.argv) < 3 else sys.argv[2:]
@@ -89,7 +100,7 @@ if __name__ == "__main__":
             "ML-Perceptron-RandSize": NeuralNetwork,
             "DINO-TINY": vit_tiny,
             "DINO-CLASSIFIER": vit_custom,
-            "DINO-STRIPPED": basic,
+            "METAFORMER-BASE": basic,
         }
         use_model_name = list(available_models.keys())[0]
 
