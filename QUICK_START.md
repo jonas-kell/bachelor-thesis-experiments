@@ -15,16 +15,10 @@ python3 main.py prep
 ### Show a stored tensor
 
 Lets you display a tensor that is stored on file as an image.
-Will apply inverse of the Imagenet normalization beforehand.
+Will apply inverse of the ImageNet normalization beforehand.
 
 ```cmd
 python3 main.py show "<<path/to/tensor>>"
-```
-
-Example show paths for my system
-
-```
-"/media/jonas/69B577D0C4C25263/MLData/transformed/val/n01443537_00032258.pt"
 ```
 
 ### Evaluate a stored model

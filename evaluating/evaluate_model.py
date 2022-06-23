@@ -2,7 +2,6 @@ from typing import Literal
 from numpy import Infinity
 import torch
 from SynsetMapper import SynsetMapper
-from transformations import resize_normalize
 import sys
 import os
 import matplotlib.pyplot as plt

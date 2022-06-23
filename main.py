@@ -19,7 +19,7 @@ from managing_imagenet_data.pre_process_data import (
     transform_training_data,
     show_image_from_transformed_stored_tensor,
 )
-from transformations import resize_normalize
+from transformations import resize_normalize, resize_normalize_to_tensor
 from PathAndFolderConstants import PathAndFolderConstants
 from SynsetMapper import SynsetMapper
 from evaluating.evaluate_model import evaluate_model
@@ -65,7 +65,7 @@ def evaluate(
 
     print("Using model: " + path_to_model_file + " to evaluate images")
 
-    evaluate_model(device, path_to_model_file, resize_normalize, mapper)
+    evaluate_model(device, path_to_model_file, resize_normalize_to_tensor, mapper)
 
 
 if __name__ == "__main__":

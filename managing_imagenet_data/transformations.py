@@ -12,6 +12,16 @@ resize_normalize = transforms.Compose(
     ],
 )
 
+resize_normalize_to_tensor = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.PILToTensor(),
+        transforms.ConvertImageDtype(torch.float),
+        # these are the image net means ->
+        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+    ],
+)
+
 normalize_inverse = transforms.Compose(
     [
         transforms.Normalize(
