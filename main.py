@@ -94,6 +94,7 @@ if __name__ == "__main__":
         additional_parameters = [] if len(sys.argv) < 3 else sys.argv[2:]
 
         supported_args = inspect.getfullargspec(train_model).args
+        types = inspect.getfullargspec(train_model).annotations
         args_to_pass = {}
 
         available_models = {  # add custom configurations in this dict
@@ -109,13 +110,20 @@ if __name__ == "__main__":
 
             if len(split) == 2:
                 if split[0] in supported_args:
+                    if types[str(split[0])] in [int, bool, float]:
+                        val = types[str(split[0])](split[1])
+                    else:
+                        val = str(split[1])
+
                     print(
                         "Use additional parameter: "
                         + str(split[0])
+                        + " with type "
+                        + str(types[str(split[0])])
                         + " with value "
-                        + str(split[1])
+                        + str(val)
                     )
-                    args_to_pass[split[0]] = split[1]
+                    args_to_pass[split[0]] = val
                 if split[0] == "model":
                     use_model_name = split[1]
 
