@@ -1,3 +1,4 @@
+from operator import index
 from typing import Literal
 from xmlrpc.client import boolean
 import numpy as np
@@ -62,6 +63,53 @@ def transform_adjacency_matrix(
         return result
 
 
+def adjacency_matrix_from_locally_applied_kernel(
+    kernel: np.ndarray, rows: int, columns: int
+) -> np.ndarray:
+    assert rows > 0
+    assert columns > 0
+    assert kernel.dtype == np.bool8
+    assert kernel.shape[0] == kernel.shape[1]
+    assert kernel.shape[0] % 2 == 1
+
+    result = np.zeros((rows * columns, rows * columns), dtype=np.bool8)
+    k = (kernel.shape[0] - 1) // 2
+
+    for i in range(rows):  # row index
+        for j in range(columns):  # column index
+            for off_i in range(-k, k + 1):  # row index
+                for off_j in range(-k, k + 1):  # column indexs
+                    # avoid shooting over boundaries
+                    if (0 <= (i + off_i) < rows) and (0 <= (j + off_j) < columns):
+                        # arranged like this (and so on)
+                        #
+                        # [[0,1,2],
+                        #  [3,4,5]]
+
+                        result[
+                            i * columns + j,
+                            (i + off_i) * columns + (j + off_j),
+                        ] = kernel[off_i + k, off_j + k]
+
+    return result
+
+
+def nn_matrix(n: int):
+    assert n > 0
+    kernel = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]], dtype=np.bool8)
+
+    return adjacency_matrix_from_locally_applied_kernel(kernel, n, n)
+
+
+def nnn_matrix(n: int):
+    assert n > 0
+    kernel = np.array([[1, 0, 1], [0, 0, 0], [1, 0, 1]], dtype=np.bool8)
+
+    return adjacency_matrix_from_locally_applied_kernel(kernel, n, n)
+
+
 if __name__ == "__main__":
     adjacency_matrix = np.array([[1, 1, 0], [1, 1, 1], [0, 1, 1]], dtype=np.bool8)
+    adjacency_matrix = nn_matrix(224 // 16)
+
     print(transform_adjacency_matrix(adjacency_matrix, True, "avg+1"))
