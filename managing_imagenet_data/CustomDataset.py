@@ -9,7 +9,11 @@ import torchvision.transforms as transforms
 
 class CustomDataset(torch.utils.data.Dataset):
     def __init__(
-        self, constants: PathAndFolderConstants, mapper: SynsetMapper, mode="train"
+        self,
+        constants: PathAndFolderConstants,
+        mapper: SynsetMapper,
+        mode="train",
+        preload_to_ram=True,
     ):
         self.mapper = mapper
 
@@ -40,13 +44,33 @@ class CustomDataset(torch.utils.data.Dataset):
             [transforms.PILToTensor(), transforms.ConvertImageDtype(torch.float)]
         )
 
+        self.preload_to_ram = preload_to_ram
+        if preload_to_ram:
+            print("Preloading Dataset")
+            self.images = [None] * len(self.files)
+
+            total = len(self.files)
+            five_percent = total // 20
+
+            for idx in range(total):
+                image = Image.open(os.path.join(self.folder_path, self.files[idx]))
+                image.load()  # load the features of this sample
+                self.images[idx] = image
+                if idx % five_percent == 0:
+                    print(str(5 * int(idx / five_percent)) + "%")
+
+            print("Finished Preloading Dataset")
+
     def __len__(self):
         return len(self.files)
 
     def __getitem__(self, idx):
-        image = Image.open(os.path.join(self.folder_path, self.files[idx]))
-        sample = self.to_tensor(image)  # load the features of this sample
-        image.close()
+        if self.preload_to_ram:
+            sample = self.to_tensor(self.images[idx])
+        else:
+            image = Image.open(os.path.join(self.folder_path, self.files[idx]))
+            sample = self.to_tensor(image)
+            image.close()
 
         label = self.files[idx].split("_", 1)[0]
         class_id = self.mapper.vector_index_from_synset_id(label)

@@ -81,7 +81,7 @@ if __name__ == "__main__":
         prepare_data(constants, mapper)
 
     elif type_of_operation == "train":
-        # training requires rnadom numbers.
+        # training requires random numbers.
         # They will be encountered in this file already, because here random numbers may be used in the creation of the neural networks
         # (the functions are in the dict)
         torch.manual_seed(0)

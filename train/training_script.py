@@ -146,6 +146,7 @@ def train_model(
     loss_fn_name: Literal["cross_entropy_loss"] = "cross_entropy_loss",
     optimizer_name: Literal["sgd"] = "sgd",
     model_name: str = "",  # for log purposes only !!!
+    preload_data_to_ram: bool = True,
 ):
     # model
     model = network.to(device)
@@ -163,8 +164,12 @@ def train_model(
         )
 
     # datasets
-    training_data = CustomDataset(constants, mapper, constants.train_folder_name)
-    val_data = CustomDataset(constants, mapper, constants.val_folder_name)
+    training_data = CustomDataset(
+        constants, mapper, constants.train_folder_name, preload_data_to_ram
+    )
+    val_data = CustomDataset(
+        constants, mapper, constants.val_folder_name, preload_data_to_ram
+    )
 
     # dataloaders
     nr_workers = 4
