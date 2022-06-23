@@ -3,6 +3,8 @@ import os
 
 from PathAndFolderConstants import PathAndFolderConstants
 from SynsetMapper import SynsetMapper
+from PIL import Image
+import torchvision.transforms as transforms
 
 
 class CustomDataset(torch.utils.data.Dataset):
@@ -34,13 +36,17 @@ class CustomDataset(torch.utils.data.Dataset):
 
         self.files = os.listdir(self.folder_path)
 
+        self.to_tensor = transforms.Compose(
+            [transforms.PILToTensor(), transforms.ConvertImageDtype(torch.float)]
+        )
+
     def __len__(self):
         return len(self.files)
 
     def __getitem__(self, idx):
-        sample = torch.load(
-            os.path.join(self.folder_path, self.files[idx])
-        )  # load the features of this sample
+        image = Image.open(os.path.join(self.folder_path, self.files[idx]))
+        sample = self.to_tensor(image)  # load the features of this sample
+        image.close()
 
         label = self.files[idx].split("_", 1)[0]
         class_id = self.mapper.vector_index_from_synset_id(label)

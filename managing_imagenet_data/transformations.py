@@ -8,6 +8,7 @@ resize_normalize = transforms.Compose(
         transforms.ConvertImageDtype(torch.float),
         # these are the image net means ->
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        transforms.ToPILImage(),
     ],
 )
 

@@ -169,7 +169,7 @@ def train_model(
     # dataloaders
     nr_workers = 4
     pin_memory = (
-        device == "cuda" and True
+        device == "cuda"
     )  # faster and larger memory and easy peasy everything is faster and pinning works
     shuffle = True
     train_dataloader = DataLoader(

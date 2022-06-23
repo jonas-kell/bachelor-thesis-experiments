@@ -65,14 +65,17 @@ def transform_training_data(
 
                 if img.mode == "RGB":  # grayscale images are ignored for simplicity
 
-                    tensor = transformation(img)
-                    torch.save(
-                        tensor,
+                    image = transformation(img)
+                    image.save(
                         os.path.join(
                             constants.path_to_folder_for_transformed_data,
                             constants.train_folder_name,
-                            name + ".pt",
+                            name + ".JPEG",
                         ),
+                        "JPEG",
+                        quality=80,
+                        optimize=True,
+                        progressive=True,
                     )
 
                 img.close()  # free image memory
@@ -141,14 +144,18 @@ def transform_validation_data(
 
                 # only validation data for used synsets needed
                 if solution_synset in mapper.all_used_synset_ids():
-                    tensor = transformation(img)
-                    torch.save(
-                        tensor,
+
+                    image = transformation(img)
+                    image.save(
                         os.path.join(
                             constants.path_to_folder_for_transformed_data,
                             constants.val_folder_name,
-                            solution_synset + "_" + val_index + ".pt",
+                            solution_synset + "_" + val_index + ".JPEG",
                         ),
+                        "JPEG",
+                        quality=80,
+                        optimize=True,
+                        progressive=True,
                     )
 
             img.close()  # free image memory
