@@ -173,8 +173,8 @@ class PatchEmbed(nn.Module):
         return x
 
 
-class VisionTransformer(nn.Module):
-    """Vision Transformer"""
+class VisionMetaformer(nn.Module):
+    """Vision VisionMetaformer"""
 
     def __init__(
         self,
@@ -298,7 +298,7 @@ class VisionTransformer(nn.Module):
 
 
 def basic(patch_size=16, **kwargs):
-    model = VisionTransformer(
+    model = VisionMetaformer(
         patch_size=patch_size,
         embed_dim=192,
         depth=12,
