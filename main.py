@@ -34,7 +34,7 @@ mapper = SynsetMapper(constants)
 
 from models.mlp import NeuralNetwork
 from models.vision_transformer import vit_custom, vit_tiny
-from models.transformer import basic
+from models.metaformer import basic
 
 
 def prepare_data(
