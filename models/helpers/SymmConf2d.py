@@ -1,6 +1,7 @@
 import torch
 from torch import Tensor
 import torch.nn as nn
+import math
 
 # symmetric depthwise seperable convolution
 class SymmDepthSepConf2d(nn.Module):
@@ -36,8 +37,9 @@ class SymmDepthSepConf2d(nn.Module):
             requires_grad=False,
         )
         self.center_params = nn.Parameter(
-            Tensor([1] * self.in_channels), requires_grad=True
+            torch.empty(self.in_channels), requires_grad=True
         )
+        nn.init.normal_(self.center_params.data)
 
         # nearest neighbor element of the 3x3 convolution kernel
         if has_nn:
@@ -56,8 +58,9 @@ class SymmDepthSepConf2d(nn.Module):
                 requires_grad=False,
             )
             self.nn_params = nn.Parameter(
-                Tensor([1] * self.in_channels), requires_grad=True
+                torch.empty(self.in_channels), requires_grad=True
             )
+            nn.init.normal_(self.nn_params.data)
 
         # next nearest neighbor element of the 3x3 convolution kernel
         if has_nnn:
@@ -76,8 +79,9 @@ class SymmDepthSepConf2d(nn.Module):
                 requires_grad=False,
             )
             self.nnn_params = nn.Parameter(
-                Tensor([1] * self.in_channels), requires_grad=True
+                torch.empty(self.in_channels), requires_grad=True
             )
+            nn.init.normal_(self.nnn_params.data)
 
         # 1x1 convolution to convolve depthwise to output number of channels
         self.depth_conv = nn.Conv2d(self.in_channels, self.out_channels, 1, bias=bias)
@@ -121,3 +125,8 @@ class SymmDepthSepConf2d(nn.Module):
         res = self.depth_conv(res)
 
         return res
+
+
+# symmetric convolution
+class SymmConf2d(nn.Module):
+    pass
