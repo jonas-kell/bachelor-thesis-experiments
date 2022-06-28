@@ -27,10 +27,10 @@ x_batched = torch.linspace(
 # print(x_batched)
 
 
-symm_conf = SymmDepthSepConf2d(
+symm_conf = SymmConf2d(
     in_channels=channels_in,
     out_channels=channels_out,
-    depthwise_multiplier=1,
+    # depthwise_multiplier=1,
     has_nn=True,
     has_nnn=True,
     bias=False,
