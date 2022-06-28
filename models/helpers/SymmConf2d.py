@@ -1,6 +1,7 @@
 import torch
 from torch import Tensor
 import torch.nn as nn
+from torch.nn.common_types import _size_2_t
 
 # symmetric depthwise seperable convolution
 class SymmDepthSepConf2d(nn.Module):
@@ -12,6 +13,10 @@ class SymmDepthSepConf2d(nn.Module):
         has_nn: bool = True,
         has_nnn: bool = True,
         bias: bool = False,
+        stride: _size_2_t = 1,
+        padding: _size_2_t | str = 0,
+        dilation: _size_2_t = 1,
+        padding_mode: str = "zeros",
     ):
         super().__init__()
 
@@ -29,6 +34,10 @@ class SymmDepthSepConf2d(nn.Module):
             3,
             bias=bias,
             groups=self.in_channels,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            padding_mode=padding_mode,
         )
         self.center.weight = nn.Parameter(
             torch.tensor(
@@ -51,6 +60,10 @@ class SymmDepthSepConf2d(nn.Module):
                 3,
                 bias=bias,
                 groups=self.in_channels,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                padding_mode=padding_mode,
             )
             self.nn.weight = nn.Parameter(
                 torch.tensor(
@@ -73,6 +86,10 @@ class SymmDepthSepConf2d(nn.Module):
                 3,
                 bias=bias,
                 groups=self.in_channels,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                padding_mode=padding_mode,
             )
             self.nnn.weight = nn.Parameter(
                 torch.tensor(
@@ -144,6 +161,10 @@ class SymmConf2d(nn.Module):
         has_nn: bool = True,
         has_nnn: bool = True,
         bias: bool = False,
+        stride: _size_2_t = 1,
+        padding: _size_2_t | str = 0,
+        dilation: _size_2_t = 1,
+        padding_mode: str = "zeros",
     ):
         super().__init__()
 
@@ -159,6 +180,10 @@ class SymmConf2d(nn.Module):
             1,
             3,
             bias=bias,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            padding_mode=padding_mode,
         )
         self.center.weight = nn.Parameter(
             torch.tensor(
@@ -180,6 +205,10 @@ class SymmConf2d(nn.Module):
                 1,
                 3,
                 bias=bias,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                padding_mode=padding_mode,
             )
             self.nn.weight = nn.Parameter(
                 torch.tensor(
@@ -201,6 +230,10 @@ class SymmConf2d(nn.Module):
                 1,
                 3,
                 bias=bias,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                padding_mode=padding_mode,
             )
             self.nnn.weight = nn.Parameter(
                 torch.tensor(

@@ -13,7 +13,7 @@ from SymmConf2d import SymmDepthSepConf2d, SymmConf2d
 input_size = 4
 channels_in = 2
 channels_out = 3
-batch = 4
+batch = 3
 
 x_unbatched = torch.linspace(
     1, channels_in * input_size * input_size, channels_in * input_size * input_size
@@ -27,10 +27,10 @@ x_batched = torch.linspace(
 # print(x_batched)
 
 
-symm_conf = SymmConf2d(
+symm_conf = SymmDepthSepConf2d(
     in_channels=channels_in,
     out_channels=channels_out,
-    # depthwise_multiplier=1,
+    depthwise_multiplier=1,
     has_nn=True,
     has_nnn=True,
     bias=False,
@@ -44,14 +44,14 @@ loss_fn = nn.L1Loss()
 # test unbatched
 optimizer.zero_grad()
 result = symm_conf(x_unbatched)
-loss = loss_fn(result, torch.zeros((channels_out, 2, 2)))
+loss = loss_fn(result, torch.zeros_like(result))
 loss.backward()
 optimizer.step()
 
-# print(result)
-print(symm_conf.center_params.data)
-print(symm_conf.nn_params.data)
-print(symm_conf.nnn_params.data)
+print(result)
+# print(symm_conf.center_params.data)
+# print(symm_conf.nn_params.data)
+# print(symm_conf.nnn_params.data)
 
 # print(symm_conf.center.weight.data)
 # print(symm_conf.nn.weight.data)
@@ -60,14 +60,14 @@ print(symm_conf.nnn_params.data)
 # test batched
 optimizer.zero_grad()
 result = symm_conf(x_batched)
-loss = loss_fn(result, torch.zeros((batch, channels_out, 2, 2)))
+loss = loss_fn(result, torch.zeros_like(result))
 loss.backward()
 optimizer.step()
 
-# print(result)
-print(symm_conf.center_params.data)
-print(symm_conf.nn_params.data)
-print(symm_conf.nnn_params.data)
+print(result)
+# print(symm_conf.center_params.data)
+# print(symm_conf.nn_params.data)
+# print(symm_conf.nnn_params.data)
 
 # print(symm_conf.center.weight.data)
 # print(symm_conf.nn.weight.data)
