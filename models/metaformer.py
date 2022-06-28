@@ -307,7 +307,7 @@ class VisionMetaformer(nn.Module):
         return x[:, 0]
 
 
-def tiny_parameters():
+def tiny_parameters() -> VisionMetaformer:
     return partial(
         VisionMetaformer,
         patch_size=16,
@@ -322,3 +322,28 @@ def tiny_parameters():
 
 def basic(**kwargs):
     return tiny_parameters()(**kwargs)
+
+
+def graph_transformer_nn(**kwargs):
+    return tiny_parameters()(
+        graph_layer="symm_nn", average_graph_connections=True, **kwargs
+    )
+
+
+def graph_transformer_nnn(**kwargs):
+    return tiny_parameters()(
+        graph_layer="symm_nnn", average_graph_connections=True, **kwargs
+    )
+
+
+def poolformer(**kwargs):
+    return tiny_parameters()(token_mixer="pooling", **kwargs)
+
+
+def graph_poolformer(**kwargs):
+    return tiny_parameters()(
+        token_mixer="pooling",
+        graph_layer="symm_nnn",
+        average_graph_connections=True,
+        **kwargs
+    )

@@ -34,7 +34,8 @@ mapper = SynsetMapper(constants)
 
 from models.mlp import NeuralNetwork
 from models.vision_transformer import vit_custom, vit_tiny
-from models.metaformer import basic
+from models.res_net import res_net, res_net_pretrained
+from models.metaformer import basic, poolformer
 
 
 def prepare_data(
@@ -99,9 +100,12 @@ if __name__ == "__main__":
 
         available_models = {  # add custom configurations in this dict
             "ML-Perceptron-RandSize": NeuralNetwork,
+            "RES-NET": res_net,
+            "RES-NET-PRETRAINED": res_net_pretrained,
             "DINO-TINY": vit_tiny,
             "DINO-CLASSIFIER": vit_custom,
             "METAFORMER-BASE": basic,
+            "POOLFORMER": poolformer,
         }
         use_model_name = list(available_models.keys())[0]
 

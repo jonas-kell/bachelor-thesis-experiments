@@ -266,7 +266,7 @@ def train_model(
     # train it like it's hot
     for t in range(epochs):
         # run an epoch
-        epoch_message = f"Epoch {t+1}"
+        epoch_message = f"Epoch {t}"
         print(epoch_message + "\n-------------------------------")
         writer.add_text("epoch", epoch_message)
 
