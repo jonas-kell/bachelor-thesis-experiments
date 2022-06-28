@@ -2,7 +2,7 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 
-# symmetric convolution
+# symmetric depthwise seperable convolution
 class SymmDepthSepConf2d(nn.Module):
     def __init__(
         self,
@@ -86,7 +86,7 @@ class SymmDepthSepConf2d(nn.Module):
         # "...chw,c -> ...chw" would also work for both cases. But I'd rather state explicitly
         if len(input.shape) == 4:
             # 4D Tensor (BxCxHxW)
-            einsum_eq = "chw,c -> bchw"
+            einsum_eq = "bchw,c -> bchw"
         elif len(input.shape) == 3:
             # 3D Tensor (CxHxW)
             einsum_eq = "chw,c -> chw"
