@@ -19,14 +19,16 @@ from message import post_message_to_slack
 
 def train_loop(epoch, dataloader, model, loss_fn, optimizer, device, writer):
     size = len(dataloader.dataset)
+
     num_batches = len(dataloader)
-    train_loss, train_correct, loading_time_hdd, loading_time_gpu, processing_time = (
-        0,
-        0,
-        0,
-        0,
-        0,
-    )
+    train_loss = torch.tensor([0], dtype=torch.float32, device=device)
+    train_correct_top1 = torch.tensor([0], dtype=torch.float32, device=device)
+    train_correct_top3 = torch.tensor([0], dtype=torch.float32, device=device)
+    train_correct_top5 = torch.tensor([0], dtype=torch.float32, device=device)
+    loading_time_hdd = 0
+    loading_time_gpu = 0
+    processing_time = 0
+
     log_frequency = 50
 
     start_loading_time_hdd = time.time()
@@ -53,8 +55,13 @@ def train_loop(epoch, dataloader, model, loss_fn, optimizer, device, writer):
         optimizer.step()
 
         # aggregate log data
-        train_loss += loss.item()
-        train_correct += (pred.argmax(1) == y).type(torch.float).sum().item() / len(X)
+        train_loss += loss
+        topk_pred = torch.topk(pred, 5, 1).indices.t()
+        correct = topk_pred.eq(y.view(1, -1).expand_as(topk_pred))
+        train_correct_top1 += correct[:1].float().sum() / X.shape[0]
+        train_correct_top3 += correct[:3].float().sum() / X.shape[0]
+        train_correct_top5 += correct[:5].float().sum() / X.shape[0]
+        torch.cuda.synchronize()
 
         # timing
         end_processing_time = time.time()
@@ -64,7 +71,9 @@ def train_loop(epoch, dataloader, model, loss_fn, optimizer, device, writer):
         if batch % log_frequency == 0 and batch != 0:
             # average data
             train_loss /= log_frequency
-            train_correct /= log_frequency / 100.0
+            train_correct_top1 /= log_frequency / 100.0
+            train_correct_top3 /= log_frequency / 100.0
+            train_correct_top5 /= log_frequency / 100.0
             loading_time_hdd /= log_frequency / 1000.0
             loading_time_gpu /= log_frequency / 1000.0
             processing_time /= log_frequency / 1000.0
@@ -72,7 +81,17 @@ def train_loop(epoch, dataloader, model, loss_fn, optimizer, device, writer):
             # tensorboard logs
             writer.add_scalar("Loss/train", train_loss, epoch * num_batches + batch)
             writer.add_scalar(
-                "Accuracy(%)/train", train_correct, epoch * num_batches + batch
+                "Accuracy(%)/train", train_correct_top1, epoch * num_batches + batch
+            )
+            writer.add_scalar(
+                "Accuracy(%)/train_top3",
+                train_correct_top3,
+                epoch * num_batches + batch,
+            )
+            writer.add_scalar(
+                "Accuracy(%)/train_top5",
+                train_correct_top5,
+                epoch * num_batches + batch,
             )
             writer.add_scalar(
                 "Time(ms)/load_hdd", loading_time_hdd, epoch * num_batches + batch
@@ -86,17 +105,17 @@ def train_loop(epoch, dataloader, model, loss_fn, optimizer, device, writer):
 
             # console logs
             print(
-                f"Accuracy: {(train_correct):>0.1f}%, loss: {train_loss:>7f}  [{batch * len(X):>6d}/{size:>6d}]   load_hdd: {loading_time_hdd:>4f}ms, load_gpu: {loading_time_gpu:>4f}ms, process: {processing_time:>4f}ms"
+                f"Acc: {(train_correct_top1.item()):>0.1f}%, Acc_t3: {(train_correct_top3.item()):>0.1f}%, Acc_t5: {(train_correct_top5.item()):>0.1f}%, loss: {train_loss.item():>7f}  [{batch * len(X):>6d}/{size:>6d}]   load_hdd: {loading_time_hdd:>4f}ms, load_gpu: {loading_time_gpu:>4f}ms, process: {processing_time:>4f}ms"
             )
 
             # reset counters
-            (
-                train_loss,
-                train_correct,
-                loading_time_hdd,
-                loading_time_gpu,
-                processing_time,
-            ) = (0, 0, 0, 0, 0)
+            train_loss = torch.tensor([0], dtype=torch.float32, device=device)
+            train_correct_top1 = torch.tensor([0], dtype=torch.float32, device=device)
+            train_correct_top3 = torch.tensor([0], dtype=torch.float32, device=device)
+            train_correct_top5 = torch.tensor([0], dtype=torch.float32, device=device)
+            loading_time_hdd = 0
+            loading_time_gpu = 0
+            processing_time = 0
 
         # timing
         start_loading_time_hdd = time.time()
@@ -105,7 +124,10 @@ def train_loop(epoch, dataloader, model, loss_fn, optimizer, device, writer):
 def val_loop(epoch, dataloader, model, loss_fn, device, writer):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
-    val_loss, val_correct = 0, 0
+    val_loss = torch.tensor([0], dtype=torch.float32, device=device)
+    val_correct_top1 = torch.tensor([0], dtype=torch.float32, device=device)
+    val_correct_top3 = torch.tensor([0], dtype=torch.float32, device=device)
+    val_correct_top5 = torch.tensor([0], dtype=torch.float32, device=device)
 
     with torch.no_grad():
         for X, y in dataloader:
@@ -115,20 +137,30 @@ def val_loop(epoch, dataloader, model, loss_fn, device, writer):
 
             # test
             pred = model(X)
-            val_loss += loss_fn(pred, y).item()
-            val_correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+
+            # log aggregation
+            val_loss += loss_fn(pred, y)
+            topk_pred = torch.topk(pred, 5, 1).indices.t()
+            correct = topk_pred.eq(y.view(1, -1).expand_as(topk_pred))
+            val_correct_top1 += correct[:1].float().sum()
+            val_correct_top3 += correct[:3].float().sum()
+            val_correct_top5 += correct[:5].float().sum()
 
     # average data
     val_loss /= num_batches
-    val_correct /= size / 100.0
+    val_correct_top1 /= size / 100.0
+    val_correct_top3 /= size / 100.0
+    val_correct_top5 /= size / 100.0
 
     # tensorboard logs
-    writer.add_scalar("Accuracy(%)/test", val_correct, epoch)
+    writer.add_scalar("Accuracy(%)/test", val_correct_top1, epoch)
+    writer.add_scalar("Accuracy(%)/test_top3", val_correct_top3, epoch)
+    writer.add_scalar("Accuracy(%)/test_top5", val_correct_top5, epoch)
     writer.add_scalar("Loss/test", val_loss, epoch)
 
     # console logs
     print(
-        f"Validation Phase: \n Accuracy: {(val_correct):>0.1f}%, Avg loss: {val_loss:>8f} \n"
+        f"Validation Phase: \n Acc: {(val_correct_top1.item()):>0.1f}%, Acc_t3: {(val_correct_top3.item()):>0.1f}%, Acc_t5: {(val_correct_top5.item()):>0.1f}%, Avg loss: {val_loss.item():>8f} \n"
     )
 
 
