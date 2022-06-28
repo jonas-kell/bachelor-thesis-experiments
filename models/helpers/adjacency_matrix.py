@@ -1,6 +1,5 @@
-from typing import Literal
-from xmlrpc.client import boolean
 import numpy as np
+from typing import Literal
 
 
 def get_adding_matrix(matrix: np.ndarray) -> np.ndarray:
@@ -46,7 +45,7 @@ def transform_zero_matrix_to_neg_infinity(matrix: np.ndarray) -> np.ndarray:
 
 def transform_adjacency_matrix(
     matrix: np.ndarray,
-    neg_inf: boolean = True,
+    neg_inf: bool = True,
     type: Literal["sum", "avg", "avg+1"] = "sum",
 ) -> np.ndarray:
     if type == "sum":
@@ -105,19 +104,3 @@ def nnn_matrix(n: int):
     kernel = np.array([[1, 0, 1], [0, 0, 0], [1, 0, 1]], dtype=np.bool8)
 
     return adjacency_matrix_from_locally_applied_kernel(kernel, n, n)
-
-
-if __name__ == "__main__":
-    adjacency_matrix = np.array([[1, 1, 0], [1, 1, 1], [0, 1, 1]], dtype=np.bool8)
-    adjacency_matrix = nn_matrix(224 // 16)
-
-    print(transform_adjacency_matrix(adjacency_matrix, True, "avg+1"))
-
-    nn = transform_adjacency_matrix(nn_matrix(3), False, "avg+1")
-    nnn = transform_adjacency_matrix(nnn_matrix(3), False, "avg+1")
-
-    # "proof" by validation, this can be pre-computed
-    # (it can be for sure, because of the addition and multiplication of matrices is distributive)
-    test = np.array(range(9))
-    print(0.5 * nn @ test + 0.2 * nnn @ test)
-    print((0.5 * nn + 0.2 * nnn) @ test)
