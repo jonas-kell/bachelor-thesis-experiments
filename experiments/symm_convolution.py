@@ -6,7 +6,7 @@ import sys
 script_dir = os.path.dirname(__file__)
 helper_dir = os.path.join(script_dir, "../models/helpers")
 sys.path.append(helper_dir)
-from SymmConf2d import SymmDepthSepConf2d
+from SymmConf2d import SymmDepthSepConf2d, SymmConf2d
 
 
 # test the symmetric convolution
@@ -30,6 +30,7 @@ x_batched = torch.linspace(
 symm_conf = SymmDepthSepConf2d(
     in_channels=channels_in,
     out_channels=channels_out,
+    depthwise_multiplier=1,
     has_nn=True,
     has_nnn=True,
     bias=False,
@@ -48,9 +49,9 @@ loss.backward()
 optimizer.step()
 
 # print(result)
-# print(symm_conf.center_params.data)
-# print(symm_conf.nn_params.data)
-# print(symm_conf.nnn_params.data)
+print(symm_conf.center_params.data)
+print(symm_conf.nn_params.data)
+print(symm_conf.nnn_params.data)
 
 # print(symm_conf.center.weight.data)
 # print(symm_conf.nn.weight.data)

@@ -1,7 +1,6 @@
 import torch
 from torch import Tensor
 import torch.nn as nn
-import math
 
 # symmetric depthwise seperable convolution
 class SymmDepthSepConf2d(nn.Module):
@@ -9,6 +8,7 @@ class SymmDepthSepConf2d(nn.Module):
         self,
         in_channels=1,
         out_channels=1,
+        depthwise_multiplier=1,
         has_nn: bool = True,
         has_nnn: bool = True,
         bias: bool = False,
@@ -18,6 +18,7 @@ class SymmDepthSepConf2d(nn.Module):
         # store model properties
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.depthwise_multiplier = depthwise_multiplier
         self.has_nn = has_nn
         self.has_nnn = has_nnn
 
@@ -37,7 +38,8 @@ class SymmDepthSepConf2d(nn.Module):
             requires_grad=False,
         )
         self.center_params = nn.Parameter(
-            torch.empty(self.in_channels), requires_grad=True
+            torch.empty(self.in_channels * self.depthwise_multiplier),
+            requires_grad=True,
         )
         nn.init.normal_(self.center_params.data)
 
@@ -58,7 +60,8 @@ class SymmDepthSepConf2d(nn.Module):
                 requires_grad=False,
             )
             self.nn_params = nn.Parameter(
-                torch.empty(self.in_channels), requires_grad=True
+                torch.empty(self.in_channels * self.depthwise_multiplier),
+                requires_grad=True,
             )
             nn.init.normal_(self.nn_params.data)
 
@@ -79,21 +82,26 @@ class SymmDepthSepConf2d(nn.Module):
                 requires_grad=False,
             )
             self.nnn_params = nn.Parameter(
-                torch.empty(self.in_channels), requires_grad=True
+                torch.empty(self.in_channels * self.depthwise_multiplier),
+                requires_grad=True,
             )
             nn.init.normal_(self.nnn_params.data)
 
         # 1x1 convolution to convolve depthwise to output number of channels
-        self.depth_conv = nn.Conv2d(self.in_channels, self.out_channels, 1, bias=bias)
+        self.depth_conv = nn.Conv2d(
+            self.in_channels * depthwise_multiplier, self.out_channels, 1, bias=bias
+        )
 
     def forward(self, input: Tensor) -> Tensor:
         # "...chw,c -> ...chw" would also work for both cases. But I'd rather state explicitly
         if len(input.shape) == 4:
             # 4D Tensor (BxCxHxW)
             einsum_eq = "bchw,c -> bchw"
+            repeat_dims = [1, self.depthwise_multiplier, 1, 1]
         elif len(input.shape) == 3:
             # 3D Tensor (CxHxW)
             einsum_eq = "chw,c -> chw"
+            repeat_dims = [self.depthwise_multiplier, 1, 1]
         else:
             raise RuntimeError(
                 f"Expected 3D (unbatched) or 4D (batched) input to SymmConf2d, but got input of size: {list(input.shape)}"
@@ -102,7 +110,7 @@ class SymmDepthSepConf2d(nn.Module):
         # center element of the 3x3 convolution kernel
         res = torch.einsum(
             einsum_eq,
-            self.center(input),
+            self.center(input).repeat(*repeat_dims),
             self.center_params,
         )
 
@@ -110,7 +118,7 @@ class SymmDepthSepConf2d(nn.Module):
         if self.has_nn:
             res += torch.einsum(
                 einsum_eq,
-                self.nn(input),
+                self.nn(input).repeat(*repeat_dims),
                 self.nn_params,
             )
 
@@ -118,7 +126,7 @@ class SymmDepthSepConf2d(nn.Module):
         if self.has_nnn:
             res += torch.einsum(
                 einsum_eq,
-                self.nnn(input),
+                self.nnn(input).repeat(*repeat_dims),
                 self.nnn_params,
             )
 
