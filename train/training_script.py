@@ -176,7 +176,7 @@ def train_model(
     epochs: int = 80,  # epoch: train loop + validation/test
     batch_size: int = 128,
     loss_fn_name: Literal["cross_entropy_loss"] = "cross_entropy_loss",
-    optimizer_name: Literal["sgd"] = "sgd",
+    optimizer_name: Literal["sgd", "adamw"] = "sgd",
     model_name: str = "",  # for log purposes only !!!
     preload_data_to_ram: bool = True,
 ):
@@ -192,6 +192,14 @@ def train_model(
             lr=learning_rate,
             momentum=momentum,
             dampening=dampening,
+            weight_decay=weight_decay,
+        )
+    if optimizer_name == "adamw":
+        if weight_decay == 0:
+            weight_decay = 1e-2
+        optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=learning_rate,
             weight_decay=weight_decay,
         )
 
