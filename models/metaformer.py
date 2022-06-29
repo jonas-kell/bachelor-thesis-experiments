@@ -160,6 +160,9 @@ class TokenMixer(nn.Module):
         qkv_bias=False,
         qk_scale=None,
         attn_drop_rate=0.0,
+        # unroll arguments
+        embed_dim_unroll_a=24,
+        embed_dim_unroll_b=32,
         # pooling specific arguments
         pool_size=3,
         # convolution specific arguments
@@ -208,8 +211,21 @@ class TokenMixer(nn.Module):
         else:
             raise RuntimeError(f"Token mixing operation {token_mixer} not supported")
 
+        self.unroll_needed = token_mixer == "convolution" or token_mixer == "pooling"
+        self.embed_dim_unroll_a = embed_dim_unroll_a
+        self.embed_dim_unroll_b = embed_dim_unroll_b
+
     def forward(self, x):
-        return self.token_mixer(x)
+        if self.unroll_needed:
+            shape = x.shape
+            x = x.reshape(*shape[:-1], self.embed_dim_unroll_a, self.embed_dim_unroll_b)
+
+        x = self.token_mixer(x)
+
+        if self.unroll_needed:
+            x = x.reshape(shape)
+
+        return x
 
 
 class PatchEmbed(nn.Module):
@@ -229,6 +245,7 @@ class PatchEmbed(nn.Module):
     def forward(self, x):
         B, C, H, W = x.shape
         x = self.proj(x).flatten(2).transpose(1, 2)
+        # b, 197=1+196=1+(14)^2=1+(224/16)^2, embed dimension (=192)
         return x
 
 
@@ -242,6 +259,8 @@ class VisionMetaformer(nn.Module):
         in_chans=3,
         num_classes=0,
         embed_dim=768,
+        embed_dim_unroll_a=24,
+        embed_dim_unroll_b=32,
         depth=12,
         mlp_ratio=4.0,
         drop_rate=0.0,
@@ -265,6 +284,12 @@ class VisionMetaformer(nn.Module):
     ):
         super().__init__()
         self.num_features = self.embed_dim = embed_dim
+
+        # make sure, the embedding can be reasonably be unrolled again
+        if embed_dim_unroll_a * embed_dim_unroll_b != self.embed_dim:
+            raise RuntimeError(
+                f"embed_dim_unroll_a * embed_dim_unroll_b is expected to be embed_dim. {embed_dim_unroll_a} * {embed_dim_unroll_b} = {embed_dim_unroll_a * embed_dim_unroll_b} given, but {embed_dim} expected"
+            )
 
         self.patch_embed = PatchEmbed(
             img_size=img_size[0],
@@ -294,6 +319,9 @@ class VisionMetaformer(nn.Module):
                         qkv_bias=qkv_bias,
                         qk_scale=qk_scale,
                         attn_drop_rate=attn_drop_rate,
+                        # unroll arguments
+                        embed_dim_unroll_a=embed_dim_unroll_a,
+                        embed_dim_unroll_b=embed_dim_unroll_b,
                         # pooling specific arguments
                         pool_size=pool_size,
                         # convolution specific arguments
@@ -383,6 +411,8 @@ def tiny_parameters() -> VisionMetaformer:
         VisionMetaformer,
         patch_size=16,
         embed_dim=192,
+        embed_dim_unroll_a=16,
+        embed_dim_unroll_b=12,
         depth=12,
         mlp_ratio=4,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
