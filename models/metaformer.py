@@ -137,9 +137,15 @@ class Block(nn.Module):
         )
 
     def forward(self, x):
-        y = self.token_mixer(self.norm1(x))
+        y = self.norm1(x)
+        y = self.token_mixer(y)
+
         x = x + self.drop_path(y)
-        x = x + self.drop_path(self.mlp(self.norm2(x)))
+
+        z = self.norm2(x)
+        z = self.mlp(z)
+
+        x = x + self.drop_path(z)
         return x
 
 
