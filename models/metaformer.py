@@ -22,7 +22,7 @@ from typing import Literal
 import torch
 import torch.nn as nn
 from helpers.trunc_normal import trunc_normal_
-from helpers.SymmConf2d import SymmConf2d, SymmDepthSepConf2d, DepthSepConf2d
+from SymmConv2d import SymmConv2d, SymmDepthSepConv2d, DepthSepConv2d
 
 
 class DropPath(nn.Module):
@@ -192,7 +192,7 @@ class TokenMixer(nn.Module):
             if depthwise_convolution:
                 # depthwise-seperable convolution
                 if convolution_type == "arbitrary":
-                    self.token_mixer = DepthSepConf2d(
+                    self.token_mixer = DepthSepConv2d(
                         nr_channels,
                         nr_channels,
                         3,
@@ -201,7 +201,7 @@ class TokenMixer(nn.Module):
                         padding=3 // 2,
                     )
                 elif convolution_type == "symm_nn":
-                    self.token_mixer = SymmDepthSepConf2d(
+                    self.token_mixer = SymmDepthSepConv2d(
                         nr_channels,
                         nr_channels,
                         depthwise_multiplier=1,
@@ -211,7 +211,7 @@ class TokenMixer(nn.Module):
                         padding=3 // 2,
                     )
                 elif convolution_type == "symm_nnn":
-                    self.token_mixer = SymmDepthSepConf2d(
+                    self.token_mixer = SymmDepthSepConv2d(
                         nr_channels,
                         nr_channels,
                         depthwise_multiplier=1,
@@ -231,7 +231,7 @@ class TokenMixer(nn.Module):
                         nr_channels, nr_channels, 3, 1, 3 // 2, bias=use_bias
                     )
                 elif convolution_type == "symm_nn":
-                    self.token_mixer = SymmConf2d(
+                    self.token_mixer = SymmConv2d(
                         nr_channels,
                         nr_channels,
                         has_nn=True,
@@ -241,7 +241,7 @@ class TokenMixer(nn.Module):
                         padding=3 // 2,
                     )
                 elif convolution_type == "symm_nnn":
-                    self.token_mixer = self.token_mixer = SymmConf2d(
+                    self.token_mixer = self.token_mixer = SymmConv2d(
                         nr_channels,
                         nr_channels,
                         has_nn=True,

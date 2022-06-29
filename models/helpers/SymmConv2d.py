@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.nn.common_types import _size_2_t
 
 
-class DepthSepConf2d(nn.Module):
+class DepthSepConv2d(nn.Module):
     def __init__(
         self,
         in_channels=1,
@@ -44,7 +44,7 @@ class DepthSepConf2d(nn.Module):
 
 
 # symmetric depthwise seperable convolution
-class SymmDepthSepConf2d(nn.Module):
+class SymmDepthSepConv2d(nn.Module):
     def __init__(
         self,
         in_channels=1,
@@ -161,7 +161,7 @@ class SymmDepthSepConf2d(nn.Module):
             repeat_dims = [self.depthwise_multiplier, 1, 1]
         else:
             raise RuntimeError(
-                f"Expected 3D (unbatched) or 4D (batched) input to SymmConf2d, but got input of size: {list(input.shape)}"
+                f"Expected 3D (unbatched) or 4D (batched) input to SymmConv2d, but got input of size: {list(input.shape)}"
             )
 
         # center element of the 3x3 convolution kernel
@@ -193,7 +193,7 @@ class SymmDepthSepConf2d(nn.Module):
 
 
 # symmetric convolution
-class SymmConf2d(nn.Module):
+class SymmConv2d(nn.Module):
     def __init__(
         self,
         in_channels=1,
@@ -300,7 +300,7 @@ class SymmConf2d(nn.Module):
             repeat_dims = [self.out_channels, 1, 1]
         else:
             raise RuntimeError(
-                f"Expected 3D (unbatched) or 4D (batched) input to SymmConf2d, but got input of size: {list(input.shape)}"
+                f"Expected 3D (unbatched) or 4D (batched) input to SymmConv2d, but got input of size: {list(input.shape)}"
             )
 
         # center element of the 3x3 convolution kernel
