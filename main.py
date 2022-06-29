@@ -35,7 +35,7 @@ mapper = SynsetMapper(constants)
 from models.mlp import NeuralNetwork
 from models.vision_transformer import vit_custom, vit_tiny
 from models.res_net import res_net, res_net_pretrained
-from models.metaformer import basic, poolformer
+from models.metaformer import basic, conformer, poolformer
 
 
 def prepare_data(
@@ -106,6 +106,7 @@ if __name__ == "__main__":
             "DINO-CLASSIFIER": vit_custom,
             "METAFORMER-BASE": basic,
             "POOLFORMER": poolformer,
+            "CONFORMER": conformer,
         }
         use_model_name = list(available_models.keys())[0]
 

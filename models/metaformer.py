@@ -116,26 +116,16 @@ class Block(nn.Module):
     def __init__(
         self,
         dim,
-        num_heads,
+        token_mixer: nn.Module,
         mlp_ratio=4.0,
-        qkv_bias=False,
-        qk_scale=None,
         drop=0.0,
-        attn_drop=0.0,
         drop_path=0.0,
         act_layer=nn.GELU,
         norm_layer=nn.LayerNorm,
     ):
         super().__init__()
         self.norm1 = norm_layer(dim)
-        self.attn = Attention(
-            dim,
-            num_heads=num_heads,
-            qkv_bias=qkv_bias,
-            qk_scale=qk_scale,
-            attn_drop=attn_drop,
-            proj_drop=drop,
-        )
+        self.token_mixer = token_mixer
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
@@ -147,10 +137,73 @@ class Block(nn.Module):
         )
 
     def forward(self, x):
-        y = self.attn(self.norm1(x))
+        y = self.token_mixer(self.norm1(x))
         x = x + self.drop_path(y)
         x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
+
+
+class TokenMixer(nn.Module):
+    def __init__(
+        self,
+        token_mixer: Literal["attention", "pooling", "convolution"] = "attention",
+        dim=768,
+        drop=0,
+        # attention specific arguments
+        num_heads=12,
+        qkv_bias=False,
+        qk_scale=None,
+        attn_drop_rate=0.0,
+        # pooling specific arguments
+        pool_size=3,
+        # convolution specific arguments
+        depthwise_convolution: bool = True,
+        convolution_type: Literal["arbitrary", "symm_nn", "symm_nnn"] = "arbitrary",
+    ):
+        super().__init__()
+        if token_mixer == "attention":
+            self.token_mixer = Attention(
+                dim,
+                num_heads=num_heads,
+                qkv_bias=qkv_bias,
+                qk_scale=qk_scale,
+                attn_drop=attn_drop_rate,
+                proj_drop=drop,
+            )
+        elif token_mixer == "pooling":
+            self.token_mixer = nn.AvgPool2d(
+                pool_size, 1, pool_size // 2, count_include_pad=False
+            )
+        elif token_mixer == "convolution":
+            if depthwise_convolution:
+                # depthwise-seperable convolution
+                if convolution_type == "arbitrary":
+                    self.token_mixer = nn.Identity()  # TODO
+                elif convolution_type == "symm_nn":
+                    self.token_mixer = nn.Identity()  # TODO
+                elif convolution_type == "symm_nnn":
+                    self.token_mixer = nn.Identity()  # TODO
+                else:
+                    raise RuntimeError(
+                        f"convolution_type '{convolution_type}' not implemented"
+                    )
+            else:
+                # default convolution
+                if convolution_type == "arbitrary":
+                    self.token_mixer = nn.Identity()  # TODO
+                elif convolution_type == "symm_nn":
+                    self.token_mixer = nn.Identity()  # TODO
+                elif convolution_type == "symm_nnn":
+                    self.token_mixer = nn.Identity()  # TODO
+                else:
+                    raise RuntimeError(
+                        f"convolution_type '{convolution_type}' not implemented"
+                    )
+        else:
+            raise RuntimeError(f"Token mixing operation {token_mixer} not supported")
+
+    def forward(self, x):
+        return self.token_mixer(x)
 
 
 class PatchEmbed(nn.Module):
@@ -184,7 +237,6 @@ class VisionMetaformer(nn.Module):
         num_classes=0,
         embed_dim=768,
         depth=12,
-        num_heads=12,
         mlp_ratio=4.0,
         drop_rate=0.0,
         drop_path_rate=0.0,
@@ -195,6 +247,7 @@ class VisionMetaformer(nn.Module):
         graph_layer: Literal["none", "symm_nn", "symm_nnn"] = "none",
         average_graph_connections: bool = True,
         # attention specific arguments
+        num_heads=12,
         qkv_bias=False,
         qk_scale=None,
         attn_drop_rate=0.0,
@@ -226,12 +279,23 @@ class VisionMetaformer(nn.Module):
             [
                 Block(
                     dim=embed_dim,
-                    num_heads=num_heads,
+                    token_mixer=TokenMixer(
+                        token_mixer=token_mixer,
+                        dim=embed_dim,
+                        drop=drop_rate,
+                        # attention specific arguments
+                        num_heads=num_heads,
+                        qkv_bias=qkv_bias,
+                        qk_scale=qk_scale,
+                        attn_drop_rate=attn_drop_rate,
+                        # pooling specific arguments
+                        pool_size=pool_size,
+                        # convolution specific arguments
+                        depthwise_convolution=depthwise_convolution,
+                        convolution_type=convolution_type,
+                    ),
                     mlp_ratio=mlp_ratio,
-                    qkv_bias=qkv_bias,
-                    qk_scale=qk_scale,
                     drop=drop_rate,
-                    attn_drop=attn_drop_rate,
                     drop_path=dpr[i],
                     norm_layer=norm_layer,
                 )
@@ -245,6 +309,7 @@ class VisionMetaformer(nn.Module):
             nn.Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
         )
 
+        # init model with random start values
         trunc_normal_(self.pos_embed, std=0.02)
         trunc_normal_(self.cls_token, std=0.02)
         self.apply(self._init_weights)
@@ -313,26 +378,35 @@ def tiny_parameters() -> VisionMetaformer:
         patch_size=16,
         embed_dim=192,
         depth=12,
-        num_heads=3,
         mlp_ratio=4,
-        qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        num_classes=100,
     )
 
 
 def basic(**kwargs):
-    return tiny_parameters()(**kwargs)
+    return tiny_parameters()(num_heads=3, qkv_bias=True, **kwargs)
 
 
 def graph_transformer_nn(**kwargs):
     return tiny_parameters()(
-        graph_layer="symm_nn", average_graph_connections=True, **kwargs
+        token_mixer="attention",
+        num_heads=3,
+        qkv_bias=True,
+        graph_layer="symm_nn",
+        average_graph_connections=True,
+        **kwargs,
     )
 
 
 def graph_transformer_nnn(**kwargs):
     return tiny_parameters()(
-        graph_layer="symm_nnn", average_graph_connections=True, **kwargs
+        token_mixer="attention",
+        num_heads=3,
+        qkv_bias=True,
+        graph_layer="symm_nnn",
+        average_graph_connections=True,
+        **kwargs,
     )
 
 
@@ -345,5 +419,14 @@ def graph_poolformer(**kwargs):
         token_mixer="pooling",
         graph_layer="symm_nnn",
         average_graph_connections=True,
-        **kwargs
+        **kwargs,
+    )
+
+
+def conformer(**kwargs):
+    return tiny_parameters()(
+        token_mixer="convolution",
+        depthwise_convolution=False,
+        convolution_type="arbitrary",
+        **kwargs,
     )

@@ -178,7 +178,7 @@ def train_model(
     loss_fn_name: Literal["cross_entropy_loss"] = "cross_entropy_loss",
     optimizer_name: Literal["sgd", "adamw"] = "sgd",
     model_name: str = "",  # for log purposes only !!!
-    preload_data_to_ram: bool = True,
+    preload_data_to_ram: bool = False,
 ):
     # model
     model = network.to(device)
