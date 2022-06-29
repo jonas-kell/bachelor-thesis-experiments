@@ -23,6 +23,12 @@ import torch
 import torch.nn as nn
 from helpers.trunc_normal import trunc_normal_
 from helpers.SymmConv2d import SymmConv2d, SymmDepthSepConv2d, DepthSepConv2d
+from helpers.adjacency_matrix import (
+    expand_by_one_unit,
+    nn_matrix,
+    nnn_matrix,
+    transform_adjacency_matrix,
+)
 
 
 class DropPath(nn.Module):
@@ -123,6 +129,9 @@ class Block(nn.Module):
         drop_path=0.0,
         act_layer=nn.GELU,
         norm_layer=nn.LayerNorm,
+        # graph parameters
+        graph_layer: Literal["none", "symm_nn", "symm_nnn"] = "none",
+        average_graph_connections: bool = True,
     ):
         super().__init__()
         self.norm1 = norm_layer(dim)
@@ -136,10 +145,16 @@ class Block(nn.Module):
             act_layer=act_layer,
             drop=drop,
         )
+        self.graph_masking = GraphMask(
+            graph_layer=graph_layer,
+            average_graph_connections=average_graph_connections,
+        )
 
     def forward(self, x):
         y = self.norm1(x)
         y = self.token_mixer(y)
+
+        y = self.graph_masking(y)
 
         x = x + self.drop_path(y)
 
@@ -274,6 +289,62 @@ class TokenMixer(nn.Module):
         return x
 
 
+class GraphMask(nn.Module):
+    def __init__(
+        self,
+        graph_layer: Literal["none", "symm_nn", "symm_nnn"] = "none",
+        average_graph_connections: bool = True,
+        size=14,  # TODO make adaptive
+    ):
+        super().__init__()
+
+        self.apply_graph = graph_layer != "none"
+
+        nn_factor = 1
+        nnn_factor = 0.5
+
+        # graph gets applied
+        if self.apply_graph:
+
+            if average_graph_connections:
+                if graph_layer == "symm_nn":
+                    numpy_matrix = nn_factor * transform_adjacency_matrix(
+                        nn_matrix(size), False, "avg+1"
+                    )
+                elif graph_layer == "symm_nnn":
+                    numpy_matrix = nn_factor * transform_adjacency_matrix(
+                        nn_matrix(size), False, "avg+1"
+                    ) + nnn_factor * transform_adjacency_matrix(
+                        nnn_matrix(size), False, "avg+1"
+                    )
+            else:
+                if graph_layer == "symm_nn":
+                    numpy_matrix = nn_factor * transform_adjacency_matrix(
+                        nn_matrix(size), False, "sum"
+                    )
+                elif graph_layer == "symm_nnn":
+                    numpy_matrix = nn_factor * transform_adjacency_matrix(
+                        nn_matrix(size), False, "sum"
+                    ) + nnn_factor * transform_adjacency_matrix(
+                        nnn_matrix(size), False, "sum"
+                    )
+
+            numpy_matrix = expand_by_one_unit(numpy_matrix)
+
+            self.graph_mask = nn.Parameter(
+                torch.tensor(numpy_matrix, dtype=torch.float32), requires_grad=False
+            )
+
+    def forward(self, x):
+        if not self.apply_graph:
+            return x
+
+        # graph gets applied
+        x = torch.matmul(self.graph_mask, x)
+
+        return x
+
+
 class PatchEmbed(nn.Module):
     """Image to Patch Embedding"""
 
@@ -312,7 +383,7 @@ class VisionMetaformer(nn.Module):
         drop_rate=0.0,
         drop_path_rate=0.0,
         norm_layer=nn.LayerNorm,
-        positional_encoding: Literal["none", "2dsinus"] = "2dsinus",
+        positional_encoding: Literal["none", "2dsinus"] = "2dsinus",  # TODO toggle
         token_mixer: Literal["attention", "pooling", "convolution"] = "attention",
         # graph parameters
         graph_layer: Literal["none", "symm_nn", "symm_nnn"] = "none",
@@ -379,6 +450,9 @@ class VisionMetaformer(nn.Module):
                     drop=drop_rate,
                     drop_path=dpr[i],
                     norm_layer=norm_layer,
+                    # graph parameters
+                    graph_layer=graph_layer,
+                    average_graph_connections=average_graph_connections,
                 )
                 for i in range(depth)
             ]

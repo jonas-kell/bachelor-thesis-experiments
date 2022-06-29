@@ -104,3 +104,13 @@ def nnn_matrix(n: int):
     kernel = np.array([[1, 0, 1], [0, 0, 0], [1, 0, 1]], dtype=np.bool8)
 
     return adjacency_matrix_from_locally_applied_kernel(kernel, n, n)
+
+
+def expand_by_one_unit(matrix: np.ndarray) -> np.ndarray:
+    assert matrix.dtype == np.float16
+    assert matrix.shape[0] == matrix.shape[1]
+
+    new_matrix = np.eye(matrix.shape[0] + 1, dtype=np.float16)
+    new_matrix[1:, 1:] = matrix
+
+    return new_matrix
