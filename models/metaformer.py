@@ -22,7 +22,7 @@ from typing import Literal
 import torch
 import torch.nn as nn
 from helpers.trunc_normal import trunc_normal_
-from SymmConv2d import SymmConv2d, SymmDepthSepConv2d, DepthSepConv2d
+from helpers.SymmConv2d import SymmConv2d, SymmDepthSepConv2d, DepthSepConv2d
 
 
 class DropPath(nn.Module):
