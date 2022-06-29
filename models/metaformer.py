@@ -22,6 +22,7 @@ from typing import Literal
 import torch
 import torch.nn as nn
 from helpers.trunc_normal import trunc_normal_
+from helpers.SymmConf2d import SymmConf2d, SymmDepthSepConf2d, DepthSepConf2d
 
 
 class DropPath(nn.Module):
@@ -166,6 +167,7 @@ class TokenMixer(nn.Module):
         # pooling specific arguments
         pool_size=3,
         # convolution specific arguments
+        num_patches: int = 197,
         depthwise_convolution: bool = True,
         convolution_type: Literal["arbitrary", "symm_nn", "symm_nnn"] = "arbitrary",
     ):
@@ -184,14 +186,40 @@ class TokenMixer(nn.Module):
                 pool_size, 1, pool_size // 2, count_include_pad=False
             )
         elif token_mixer == "convolution":
+            nr_channels = num_patches + 1
+            use_bias = True
+
             if depthwise_convolution:
                 # depthwise-seperable convolution
                 if convolution_type == "arbitrary":
-                    self.token_mixer = nn.Identity()  # TODO
+                    self.token_mixer = DepthSepConf2d(
+                        nr_channels,
+                        nr_channels,
+                        3,
+                        depthwise_multiplier=1,
+                        bias=use_bias,
+                        padding=3 // 2,
+                    )
                 elif convolution_type == "symm_nn":
-                    self.token_mixer = nn.Identity()  # TODO
+                    self.token_mixer = SymmDepthSepConf2d(
+                        nr_channels,
+                        nr_channels,
+                        depthwise_multiplier=1,
+                        has_nn=True,
+                        has_nnn=False,
+                        bias=use_bias,
+                        padding=3 // 2,
+                    )
                 elif convolution_type == "symm_nnn":
-                    self.token_mixer = nn.Identity()  # TODO
+                    self.token_mixer = SymmDepthSepConf2d(
+                        nr_channels,
+                        nr_channels,
+                        depthwise_multiplier=1,
+                        has_nn=True,
+                        has_nnn=True,
+                        bias=use_bias,
+                        padding=3 // 2,
+                    )
                 else:
                     raise RuntimeError(
                         f"convolution_type '{convolution_type}' not implemented"
@@ -199,11 +227,29 @@ class TokenMixer(nn.Module):
             else:
                 # default convolution
                 if convolution_type == "arbitrary":
-                    self.token_mixer = nn.Identity()  # TODO
+                    self.token_mixer = nn.Conv2d(
+                        nr_channels, nr_channels, 3, 1, 3 // 2, bias=use_bias
+                    )
                 elif convolution_type == "symm_nn":
-                    self.token_mixer = nn.Identity()  # TODO
+                    self.token_mixer = SymmConf2d(
+                        nr_channels,
+                        nr_channels,
+                        has_nn=True,
+                        has_nnn=False,
+                        bias=use_bias,
+                        stride=1,
+                        padding=3 // 2,
+                    )
                 elif convolution_type == "symm_nnn":
-                    self.token_mixer = nn.Identity()  # TODO
+                    self.token_mixer = self.token_mixer = SymmConf2d(
+                        nr_channels,
+                        nr_channels,
+                        has_nn=True,
+                        has_nnn=True,
+                        bias=use_bias,
+                        stride=1,
+                        padding=3 // 2,
+                    )
                 else:
                     raise RuntimeError(
                         f"convolution_type '{convolution_type}' not implemented"
@@ -325,6 +371,7 @@ class VisionMetaformer(nn.Module):
                         # pooling specific arguments
                         pool_size=pool_size,
                         # convolution specific arguments
+                        num_patches=num_patches,
                         depthwise_convolution=depthwise_convolution,
                         convolution_type=convolution_type,
                     ),
@@ -462,7 +509,7 @@ def graph_poolformer(**kwargs):
 def conformer(**kwargs):
     return tiny_parameters()(
         token_mixer="convolution",
-        depthwise_convolution=False,
-        convolution_type="arbitrary",
+        depthwise_convolution=True,
+        convolution_type="symm_nnn",
         **kwargs,
     )

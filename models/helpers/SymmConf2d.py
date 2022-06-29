@@ -3,6 +3,46 @@ from torch import Tensor
 import torch.nn as nn
 from torch.nn.common_types import _size_2_t
 
+
+class DepthSepConf2d(nn.Module):
+    def __init__(
+        self,
+        in_channels=1,
+        out_channels=1,
+        kernel_size=3,
+        depthwise_multiplier=1,
+        bias: bool = False,
+        stride: _size_2_t = 1,
+        padding: _size_2_t | str = 0,
+        dilation: _size_2_t = 1,
+        padding_mode: str = "zeros",
+    ):
+        super().__init__()
+
+        self.extract_conf = nn.Conv2d(
+            in_channels,
+            in_channels * depthwise_multiplier,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            padding_mode=padding_mode,
+            bias=bias,
+        )
+        self.depth_conv = nn.Conv2d(
+            in_channels * depthwise_multiplier,
+            out_channels,
+            1,
+            bias=bias,
+        )
+
+    def forward(self, input: Tensor) -> Tensor:
+        res = self.extract_conf(input)
+        res = self.depth_conv(res)
+
+        return res
+
+
 # symmetric depthwise seperable convolution
 class SymmDepthSepConf2d(nn.Module):
     def __init__(
