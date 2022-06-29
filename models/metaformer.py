@@ -383,7 +383,7 @@ class VisionMetaformer(nn.Module):
         drop_rate=0.0,
         drop_path_rate=0.0,
         norm_layer=nn.LayerNorm,
-        positional_encoding: Literal["none", "2dsinus"] = "2dsinus",  # TODO toggle
+        positional_encoding: Literal["none", "2dsinus"] = "2dsinus",
         token_mixer: Literal["attention", "pooling", "convolution"] = "attention",
         # graph parameters
         graph_layer: Literal["none", "symm_nn", "symm_nnn"] = "none",
@@ -407,6 +407,8 @@ class VisionMetaformer(nn.Module):
             raise RuntimeError(
                 f"embed_dim_unroll_a * embed_dim_unroll_b is expected to be embed_dim. {embed_dim_unroll_a} * {embed_dim_unroll_b} = {embed_dim_unroll_a * embed_dim_unroll_b} given, but {embed_dim} expected"
             )
+
+        self.positional_encoding = positional_encoding
 
         self.patch_embed = PatchEmbed(
             img_size=img_size[0],
@@ -513,8 +515,9 @@ class VisionMetaformer(nn.Module):
         cls_tokens = self.cls_token.expand(B, -1, -1)
         x = torch.cat((cls_tokens, x), dim=1)
 
-        # add positional encoding to each token
-        x = x + self.interpolate_pos_encoding(x, w, h)
+        if self.positional_encoding == "2dsinus":
+            # add positional encoding to each token
+            x = x + self.interpolate_pos_encoding(x, w, h)
 
         return self.pos_drop(x)
 
@@ -585,5 +588,6 @@ def conformer(**kwargs):
         token_mixer="convolution",
         depthwise_convolution=True,
         convolution_type="symm_nnn",
+        positional_encoding="none",
         **kwargs,
     )
