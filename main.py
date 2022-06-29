@@ -28,7 +28,7 @@ constants = PathAndFolderConstants(
     path_to_imagenet_data_folder="/media/jonas/69B577D0C4C25263/MLData/imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC",
     path_to_folder_for_transformed_data="/media/jonas/69B577D0C4C25263/MLData/transformed",
     path_to_validation_solution_file="/media/jonas/69B577D0C4C25263/MLData/imagenet-object-localization-challenge/LOC_val_solution.csv",
-    path_to_tensorboard_log_folder="/media/jonas/69B577D0C4C25263/MLData/tensorboard",
+    path_to_tensorboard_log_folder="/media/jonas/69B577D0C4C25263/MLData/tensorboard_trash",
 )
 mapper = SynsetMapper(constants)
 
@@ -36,6 +36,7 @@ from models.mlp import NeuralNetwork
 from models.vision_transformer import vit_custom, vit_tiny
 from models.res_net import res_net, res_net_pretrained
 from models.metaformer import basic, conformer, poolformer
+from models.sail_sg_poolformer import poolformer_s12
 
 
 def prepare_data(
@@ -107,6 +108,7 @@ if __name__ == "__main__":
             "METAFORMER-BASE": basic,
             "POOLFORMER": poolformer,
             "CONFORMER": conformer,
+            "PAPER-POOLFORMER": poolformer_s12,
         }
         use_model_name = list(available_models.keys())[0]
 
