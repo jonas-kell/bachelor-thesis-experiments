@@ -362,6 +362,7 @@ class PatchEmbed(nn.Module):
     def forward(self, x):
         B, C, H, W = x.shape
         x = self.proj(x).flatten(2).transpose(1, 2)
+        # B, N, D (= B, H'xW', D)
         # b, 197=1+196=1+(14)^2=1+(224/16)^2, embed dimension (=192)
         return x
 
@@ -526,8 +527,9 @@ class VisionMetaformer(nn.Module):
         for blk in self.blocks:
             x = blk(x)
         x = self.norm(x)
+        # average pooling to get from B,N,D -> B,1,D -> B,D + lin layer (D->num_classes)
         x = self.head(x)
-        return x[:, 0]
+        return x[:, 0]  # <- take only the first element (= class token)
 
 
 def tiny_parameters() -> VisionMetaformer:

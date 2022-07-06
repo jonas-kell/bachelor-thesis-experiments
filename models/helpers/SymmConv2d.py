@@ -28,12 +28,15 @@ class DepthSepConv2d(nn.Module):
             dilation=dilation,
             padding_mode=padding_mode,
             bias=bias,
+            groups=in_channels,
         )
-        self.depth_conv = nn.Conv2d(
-            in_channels * depthwise_multiplier,
-            out_channels,
-            1,
-            bias=bias,
+        self.depth_conv = (
+            nn.Conv2d(  # that is being done by the mlp (mlp=1x1 convolution)
+                in_channels * depthwise_multiplier,
+                out_channels,
+                1,
+                bias=bias,
+            )
         )
 
     def forward(self, input: Tensor) -> Tensor:
