@@ -113,7 +113,7 @@ if __name__ == "__main__":
             "CONFORMER": conformer,
             "PAPER-POOLFORMER": poolformer_s12,
         }
-        use_model_name = list(available_models.keys())[0]
+        args_to_pass["model_name"] = list(available_models.keys())[0]
 
         continue_training = False
         continue_training_path = ""
@@ -141,7 +141,7 @@ if __name__ == "__main__":
                     )
                     args_to_pass[split[0]] = val
                 if split[0] == "model_name":
-                    use_model_name = split[1]
+                    args_to_pass["model_name"] = split[1]
 
         start_epoch = 0
         if continue_training:
@@ -155,7 +155,7 @@ if __name__ == "__main__":
                     param in supported_args and not param in args_to_pass
                 ):  # allowed parameter, that is not already set
                     if param == "model_name":
-                        use_model_name = backloaded_params[param]
+                        args_to_pass["model_name"] = backloaded_params[param]
                         print(f"Model overwrite to: {backloaded_params[param]}")
                     else:
                         if types[param] in [int, bool, float]:
@@ -165,19 +165,18 @@ if __name__ == "__main__":
                         print(f"Backloading Param '{param}' with value: {val}")
                         args_to_pass[param] = val
 
-        if use_model_name not in available_models.keys():
+        if args_to_pass["model_name"] not in available_models.keys():
             raise Exception(
                 "Model not configured. Try adding it to the list of supported run configurations above."
             )
-        use_model = available_models[use_model_name]
-        print("Using the model: " + use_model_name)
+        use_model = available_models[args_to_pass["model_name"]]
+        print("Using the model: " + args_to_pass["model_name"])
 
         train(
             device,
             use_model(),
             constants,
             mapper,
-            model_name=use_model_name,
             start_epoch=start_epoch,
             is_continuing_training=continue_training,
             continue_training_path=continue_training_path,
