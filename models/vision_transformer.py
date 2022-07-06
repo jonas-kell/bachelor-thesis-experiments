@@ -295,8 +295,9 @@ class VisionTransformer(nn.Module):
         for blk in self.blocks:
             x = blk(x)
         x = self.norm(x)
+        x = x[:, 0]  # take only the values corresponding to the classifier token
         x = self.head(x)
-        return x[:, 0]
+        return x
 
     def get_last_selfattention(self, x):
         x = self.prepare_tokens(x)

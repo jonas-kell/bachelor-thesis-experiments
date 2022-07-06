@@ -527,9 +527,12 @@ class VisionMetaformer(nn.Module):
         for blk in self.blocks:
             x = blk(x)
         x = self.norm(x)
-        # average pooling to get from B,N,D -> B,1,D -> B,D + lin layer (D->num_classes)
-        x = self.head(x)
-        return x[:, 0]  # <- take only the first element (= class token)
+        # Performance/usability improvement idea: average pooling to get from B,N,D -> B,1,D -> B,D + lin layer (D->num_classes)
+
+        x = x[:, 0]  # take only the values corresponding to the classifier token
+        x = self.head(x)  # possibly apply classifier head
+
+        return x
 
 
 def tiny_parameters() -> VisionMetaformer:
