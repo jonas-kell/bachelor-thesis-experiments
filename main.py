@@ -18,6 +18,7 @@ from managing_imagenet_data.pre_process_data import (
     transform_validation_data,
     transform_training_data,
     show_image_from_transformed_stored_tensor,
+    show_image_from_transformed_stored_image,
 )
 from transformations import resize_normalize, resize_normalize_to_tensor
 from PathAndFolderConstants import PathAndFolderConstants
@@ -28,7 +29,7 @@ constants = PathAndFolderConstants(
     path_to_imagenet_data_folder="/media/jonas/69B577D0C4C25263/MLData/imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC",
     path_to_folder_for_transformed_data="/media/jonas/69B577D0C4C25263/MLData/transformed",
     path_to_validation_solution_file="/media/jonas/69B577D0C4C25263/MLData/imagenet-object-localization-challenge/LOC_val_solution.csv",
-    path_to_tensorboard_log_folder="/media/jonas/69B577D0C4C25263/MLData/tensorboard_trash",
+    path_to_tensorboard_log_folder="/media/jonas/69B577D0C4C25263/MLData/tensorboard",
 )
 mapper = SynsetMapper(constants)
 
@@ -168,5 +169,14 @@ if __name__ == "__main__":
             raise Exception("No Tensor path specified")
 
         show_image_from_transformed_stored_tensor(path_to_tensor_file)
+
+    elif type_of_operation == "show_image":
+        path_to_image_file = "" if len(sys.argv) < 3 else sys.argv[2]
+
+        if path_to_image_file == "":
+            raise Exception("No Image path specified")
+
+        show_image_from_transformed_stored_image(path_to_image_file)
+
     else:
         print("Unknown operation, please specify")

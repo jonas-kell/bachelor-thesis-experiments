@@ -169,3 +169,16 @@ def show_image_from_transformed_stored_tensor(path):
 
     plt.imshow(transforms.ToPILImage()(normalize_inverse(tensor)))
     plt.waitforbuttonpress()
+
+
+# show a image as image (duh)
+def show_image_from_transformed_stored_image(path):
+    image = Image.open(path)
+    image.load()
+
+    to_tensor = transforms.Compose(
+        [transforms.PILToTensor(), transforms.ConvertImageDtype(torch.float)]
+    )
+
+    plt.imshow(transforms.ToPILImage()(normalize_inverse(to_tensor(image))))
+    plt.waitforbuttonpress()

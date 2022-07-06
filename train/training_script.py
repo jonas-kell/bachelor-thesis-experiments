@@ -170,7 +170,7 @@ def train_model(
     constants: PathAndFolderConstants,
     mapper: SynsetMapper,
     learning_rate: float = 1e-3,
-    momentum: float = 0,
+    momentum: float = 0.9,
     dampening: float = 0,
     weight_decay: float = 0,
     epochs: int = 80,  # epoch: train loop + validation/test
