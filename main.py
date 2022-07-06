@@ -20,7 +20,7 @@ from managing_imagenet_data.pre_process_data import (
     show_image_from_transformed_stored_tensor,
     show_image_from_transformed_stored_image,
 )
-from transformations import resize_normalize, resize_normalize_to_tensor
+from transformations import resize, resize_normalize_to_tensor
 from PathAndFolderConstants import PathAndFolderConstants
 from SynsetMapper import SynsetMapper
 from evaluating.evaluate_model import evaluate_model
@@ -44,7 +44,7 @@ def prepare_data(
     constants: PathAndFolderConstants,
     mapper: SynsetMapper,
 ):
-    transformation = resize_normalize
+    transformation = resize
 
     transform_training_data(transformation, constants, mapper)
     transform_validation_data(transformation, constants, mapper)

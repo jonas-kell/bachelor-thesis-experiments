@@ -5,6 +5,7 @@ from PathAndFolderConstants import PathAndFolderConstants
 from SynsetMapper import SynsetMapper
 from PIL import Image
 import torchvision.transforms as transforms
+from transformations import normalize_to_tensor
 
 
 class CustomDataset(torch.utils.data.Dataset):
@@ -40,9 +41,8 @@ class CustomDataset(torch.utils.data.Dataset):
 
         self.files = os.listdir(self.folder_path)
 
-        self.to_tensor = transforms.Compose(
-            [transforms.PILToTensor(), transforms.ConvertImageDtype(torch.float)]
-        )
+        self.to_tensor = normalize_to_tensor
+        self.augmentation = transforms.Compose([transforms.RandomHorizontalFlip()])
 
         self.preload_to_ram = preload_to_ram
         if preload_to_ram:
@@ -66,10 +66,10 @@ class CustomDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         if self.preload_to_ram:
-            sample = self.to_tensor(self.images[idx])
+            sample = self.augmentation(self.to_tensor(self.images[idx]))
         else:
             image = Image.open(os.path.join(self.folder_path, self.files[idx]))
-            sample = self.to_tensor(image)
+            sample = self.augmentation(self.to_tensor(image))
             image.close()
 
         label = self.files[idx].split("_", 1)[0]

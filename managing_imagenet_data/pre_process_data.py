@@ -180,5 +180,7 @@ def show_image_from_transformed_stored_image(path):
         [transforms.PILToTensor(), transforms.ConvertImageDtype(torch.float)]
     )
 
-    plt.imshow(transforms.ToPILImage()(normalize_inverse(to_tensor(image))))
+    tensor = to_tensor(image)
+
+    plt.imshow(transforms.ToPILImage()(normalize_inverse(tensor)))
     plt.waitforbuttonpress()
