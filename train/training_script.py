@@ -173,14 +173,17 @@ def train_model(
     momentum: float = 0.9,
     dampening: float = 0,
     weight_decay: float = 0,
-    epochs: int = 80,  # epoch: train loop + validation/test
+    max_epochs: int = 80,  # epoch: train loop + validation/test
     batch_size: int = 128,
     loss_fn_name: Literal["cross_entropy_loss"] = "cross_entropy_loss",
     optimizer_name: Literal["sgd", "adamw"] = "sgd",
     model_name: str = "",  # for log purposes only !!!
     preload_data_to_ram: bool = False,
+    start_epoch: int = 0,
+    is_continuing_training: bool = False,
+    continue_training_path: str = "",
 ):
-    # model
+    # model to device
     model = network.to(device)
 
     if loss_fn_name == "cross_entropy_loss":
@@ -202,6 +205,16 @@ def train_model(
             lr=learning_rate,
             weight_decay=weight_decay,
         )
+
+    # restore model if needed
+    if is_continuing_training and start_epoch > 0:
+        stored_path = os.path.join(
+            continue_training_path, "model_" + str(start_epoch - 1) + ".pth"
+        )
+        print(f"Restoring model from file '{stored_path}'")
+        checkpoint = torch.load(stored_path)
+        network.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
     # datasets
     training_data = CustomDataset(
@@ -232,39 +245,52 @@ def train_model(
     )
 
     # log writer
-    run_date = datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
-    run_name = model_name + "_at_" + run_date
-    writer = SummaryWriter(
-        os.path.join(constants.path_to_tensorboard_log_folder, run_name), flush_secs=1
-    )
+    flush_secs = 2
+    if is_continuing_training:
+        writer = SummaryWriter(
+            continue_training_path,
+            flush_secs=flush_secs,
+        )
+    else:
+        run_date = datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
+        run_name = model_name + "_at_" + run_date
+        writer = SummaryWriter(
+            os.path.join(constants.path_to_tensorboard_log_folder, run_name),
+            flush_secs=flush_secs,
+        )
 
-    # log hyperparameters to file
-    writer.add_hparams(
-        {
-            "max_epochs": epochs,
-            "batch_size": batch_size,
-            "loss_fn": loss_fn_name,
-            "optimizer": optimizer_name,
-            "learning_rate": learning_rate,
-            "momentum": momentum,
-            "dampening": dampening,
-            "weight_decay": weight_decay,
-            "nr_workers": nr_workers,
-            "pin_memory": pin_memory,
-            "shuffle": shuffle,
-            "model_name": model_name,
-        },
-        {
-            "placeholder": 0
-        },  # the hyperparameter module is used normally to compare used hyperparamaters for multiple runs in one "script-execution". I can only get information about the interesting metrics (loss/accuracy/...) after my model has trained sufficiently long. It may crash or be aborted earlier however, what would result in not writing the corresponding hyperparameter entry. As the evaluating is done manually anyway, just a placeholder metric is inserted, to allow for the logging of hyperparameters for now. (no metric results in nothing being logged/displayed at all)
-        run_name="./",
-    )
+    if not is_continuing_training:
+        # log hyperparameters to file
+        writer.add_hparams(
+            {
+                "max_epochs": max_epochs,
+                "batch_size": batch_size,
+                "loss_fn_name": loss_fn_name,
+                "optimizer_name": optimizer_name,
+                "learning_rate": learning_rate,
+                "momentum": momentum,
+                "dampening": dampening,
+                "weight_decay": weight_decay,
+                "nr_workers": nr_workers,
+                "pin_memory": pin_memory,
+                "shuffle": shuffle,
+                "model_name": model_name,
+                "preload_data_to_ram": preload_data_to_ram,
+            },
+            {
+                "placeholder": 0
+            },  # the hyperparameter module is used normally to compare used hyperparamaters for multiple runs in one "script-execution". I can only get information about the interesting metrics (loss/accuracy/...) after my model has trained sufficiently long. It may crash or be aborted earlier however, what would result in not writing the corresponding hyperparameter entry. As the evaluating is done manually anyway, just a placeholder metric is inserted, to allow for the logging of hyperparameters for now. (no metric results in nothing being logged/displayed at all)
+            run_name="./",
+        )
 
     # slack
-    post_message_to_slack("Training started")
+    if not is_continuing_training:
+        post_message_to_slack("Training started")
+    else:
+        post_message_to_slack("Training continued")
 
     # train it like it's hot
-    for t in range(epochs):
+    for t in range(start_epoch, max_epochs):
         # run an epoch
         epoch_message = f"Epoch {t}"
         print(epoch_message + "\n-------------------------------")
@@ -288,7 +314,10 @@ def train_model(
         print("Saving: ")
         try:
             torch.save(
-                model,
+                {
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                },
                 os.path.join(
                     constants.path_to_tensorboard_log_folder,
                     run_name,

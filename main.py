@@ -24,6 +24,7 @@ from transformations import resize, resize_normalize_to_tensor
 from PathAndFolderConstants import PathAndFolderConstants
 from SynsetMapper import SynsetMapper
 from evaluating.evaluate_model import evaluate_model
+from train.checkpoint import get_highest_epoch, get_hyperparameter_dict
 
 constants = PathAndFolderConstants(
     path_to_imagenet_data_folder="/media/jonas/69B577D0C4C25263/MLData/imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC",
@@ -114,10 +115,16 @@ if __name__ == "__main__":
         }
         use_model_name = list(available_models.keys())[0]
 
+        continue_training = False
+        continue_training_path = ""
+
         for param_string in additional_parameters:
             split = param_string.split("=", 1)
 
             if len(split) == 2:
+                if split[0] == "continue":
+                    continue_training = True
+                    continue_training_path = str(split[1])
                 if split[0] in supported_args:
                     if types[str(split[0])] in [int, bool, float]:
                         val = types[str(split[0])](split[1])
@@ -133,8 +140,30 @@ if __name__ == "__main__":
                         + str(val)
                     )
                     args_to_pass[split[0]] = val
-                if split[0] == "model":
+                if split[0] == "model_name":
                     use_model_name = split[1]
+
+        start_epoch = 0
+        if continue_training:
+            # load back params from prev session
+            start_epoch = get_highest_epoch(continue_training_path) + 1
+            print(f"Epoch to continue on: {start_epoch}")
+
+            backloaded_params = get_hyperparameter_dict(continue_training_path)
+            for param in backloaded_params:
+                if (
+                    param in supported_args and not param in args_to_pass
+                ):  # allowed parameter, that is not already set
+                    if param == "model_name":
+                        use_model_name = backloaded_params[param]
+                        print(f"Model overwrite to: {backloaded_params[param]}")
+                    else:
+                        if types[param] in [int, bool, float]:
+                            val = types[param](backloaded_params[param])
+                        else:
+                            val = str(backloaded_params[param])
+                        print(f"Backloading Param '{param}' with value: {val}")
+                        args_to_pass[param] = val
 
         if use_model_name not in available_models.keys():
             raise Exception(
@@ -149,6 +178,9 @@ if __name__ == "__main__":
             constants,
             mapper,
             model_name=use_model_name,
+            start_epoch=start_epoch,
+            is_continuing_training=continue_training,
+            continue_training_path=continue_training_path,
             **args_to_pass,
         )
 

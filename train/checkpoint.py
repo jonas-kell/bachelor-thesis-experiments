@@ -29,7 +29,7 @@ def get_highest_epoch(path):
     if len(filtered) > 0:
         max_epoch = max(filtered)
     else:
-        max_epoch = 0
+        max_epoch = -1
 
     return max_epoch
 
