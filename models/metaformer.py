@@ -24,11 +24,11 @@ import torch.nn as nn
 from helpers.trunc_normal import trunc_normal_
 from helpers.SymmConv2d import SymmConv2d, SymmDepthSepConv2d, DepthSepConv2d
 from helpers.adjacency_matrix import (
-    expand_by_one_unit,
     nn_matrix,
     nnn_matrix,
     transform_adjacency_matrix,
 )
+from einops import rearrange
 
 
 class DropPath(nn.Module):
@@ -77,6 +77,33 @@ class Mlp(nn.Module):
         x = self.drop(x)
         x = self.fc2(x)
         x = self.drop(x)
+        return x
+
+
+class AveragingConvolutionHead(nn.Module):
+    def __init__(
+        self,
+        in_channels,
+        in_embed_dim,
+        nr_classes=0,
+    ):
+        super().__init__()
+
+        self.conv = nn.AvgPool1d(kernel_size=in_channels)
+
+        self.classifier = (
+            nn.Linear(in_embed_dim, nr_classes) if nr_classes > 0 else nn.Identity()
+        )
+
+    def forward(self, x):
+        # average pooling to get from B,N,D -> B,1,D -> B,D
+        x = rearrange(x, "b n d -> b d n")
+        x = self.conv(x)
+        x = rearrange(x, "b d 1 -> b d")
+
+        # possibly apply classifier head (lin layer (D->num_classes))
+        x = self.classifier(x)
+
         return x
 
 
@@ -182,7 +209,7 @@ class TokenMixer(nn.Module):
         # pooling specific arguments
         pool_size=3,
         # convolution specific arguments
-        num_patches: int = 197,
+        num_patches: int = 196,
         depthwise_convolution: bool = True,
         convolution_type: Literal["arbitrary", "symm_nn", "symm_nnn"] = "arbitrary",
     ):
@@ -201,15 +228,14 @@ class TokenMixer(nn.Module):
                 pool_size, 1, pool_size // 2, count_include_pad=False
             )
         elif token_mixer == "convolution":
-            nr_channels = num_patches + 1
             use_bias = True
 
             if depthwise_convolution:
                 # depthwise-seperable convolution
                 if convolution_type == "arbitrary":
                     self.token_mixer = DepthSepConv2d(
-                        nr_channels,
-                        nr_channels,
+                        num_patches,
+                        num_patches,
                         3,
                         depthwise_multiplier=1,
                         bias=use_bias,
@@ -217,8 +243,8 @@ class TokenMixer(nn.Module):
                     )
                 elif convolution_type == "symm_nn":
                     self.token_mixer = SymmDepthSepConv2d(
-                        nr_channels,
-                        nr_channels,
+                        num_patches,
+                        num_patches,
                         depthwise_multiplier=1,
                         has_nn=True,
                         has_nnn=False,
@@ -227,8 +253,8 @@ class TokenMixer(nn.Module):
                     )
                 elif convolution_type == "symm_nnn":
                     self.token_mixer = SymmDepthSepConv2d(
-                        nr_channels,
-                        nr_channels,
+                        num_patches,
+                        num_patches,
                         depthwise_multiplier=1,
                         has_nn=True,
                         has_nnn=True,
@@ -243,12 +269,12 @@ class TokenMixer(nn.Module):
                 # default convolution
                 if convolution_type == "arbitrary":
                     self.token_mixer = nn.Conv2d(
-                        nr_channels, nr_channels, 3, 1, 3 // 2, bias=use_bias
+                        num_patches, num_patches, 3, 1, 3 // 2, bias=use_bias
                     )
                 elif convolution_type == "symm_nn":
                     self.token_mixer = SymmConv2d(
-                        nr_channels,
-                        nr_channels,
+                        num_patches,
+                        num_patches,
                         has_nn=True,
                         has_nnn=False,
                         bias=use_bias,
@@ -257,8 +283,8 @@ class TokenMixer(nn.Module):
                     )
                 elif convolution_type == "symm_nnn":
                     self.token_mixer = self.token_mixer = SymmConv2d(
-                        nr_channels,
-                        nr_channels,
+                        num_patches,
+                        num_patches,
                         has_nn=True,
                         has_nnn=True,
                         bias=use_bias,
@@ -329,8 +355,6 @@ class GraphMask(nn.Module):
                         nnn_matrix(size), False, "sum"
                     )
 
-            numpy_matrix = expand_by_one_unit(numpy_matrix)
-
             self.graph_mask = nn.Parameter(
                 torch.tensor(numpy_matrix, dtype=torch.float32), requires_grad=False
             )
@@ -360,10 +384,12 @@ class PatchEmbed(nn.Module):
         )
 
     def forward(self, x):
-        B, C, H, W = x.shape
+        # B, C, H, W = x.shape
+
         x = self.proj(x).flatten(2).transpose(1, 2)
+
         # B, N, D (= B, H'xW', D)
-        # b, 197=1+196=1+(14)^2=1+(224/16)^2, embed dimension (=192)
+        # b, 196=(14)^2=(224/16)^2, embed dimension (=192)
         return x
 
 
@@ -384,7 +410,7 @@ class VisionMetaformer(nn.Module):
         drop_rate=0.0,
         drop_path_rate=0.0,
         norm_layer=nn.LayerNorm,
-        positional_encoding: Literal["none", "2dsinus"] = "2dsinus",
+        positional_encoding: Literal["none", "learned"] = "learned",
         token_mixer: Literal["attention", "pooling", "convolution"] = "attention",
         # graph parameters
         graph_layer: Literal["none", "symm_nn", "symm_nnn"] = "none",
@@ -420,7 +446,7 @@ class VisionMetaformer(nn.Module):
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim))
+        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim))
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         dpr = [
@@ -461,10 +487,11 @@ class VisionMetaformer(nn.Module):
             ]
         )
         self.norm = norm_layer(embed_dim)
+        self.head_pool = nn.AvgPool1d(3)
 
-        # Classifier head
-        self.head = (
-            nn.Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
+        # (Classifier) head
+        self.head = AveragingConvolutionHead(
+            in_channels=num_patches, in_embed_dim=embed_dim, nr_classes=num_classes
         )
 
         # init model with random start values
@@ -481,44 +508,13 @@ class VisionMetaformer(nn.Module):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
-    def interpolate_pos_encoding(self, x, w, h):
-        npatch = x.shape[1] - 1
-        N = self.pos_embed.shape[1] - 1
-        if npatch == N and w == h:
-            return self.pos_embed
-        class_pos_embed = self.pos_embed[:, 0]
-        patch_pos_embed = self.pos_embed[:, 1:]
-        dim = x.shape[-1]
-        w0 = w // self.patch_embed.patch_size
-        h0 = h // self.patch_embed.patch_size
-        # we add a small number to avoid floating point error in the interpolation
-        # see discussion at https://github.com/facebookresearch/dino/issues/8
-        w0, h0 = w0 + 0.1, h0 + 0.1
-        patch_pos_embed = nn.functional.interpolate(
-            patch_pos_embed.reshape(
-                1, int(math.sqrt(N)), int(math.sqrt(N)), dim
-            ).permute(0, 3, 1, 2),
-            scale_factor=(w0 / math.sqrt(N), h0 / math.sqrt(N)),
-            mode="bicubic",
-        )
-        assert (
-            int(w0) == patch_pos_embed.shape[-2]
-            and int(h0) == patch_pos_embed.shape[-1]
-        )
-        patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
-        return torch.cat((class_pos_embed.unsqueeze(0), patch_pos_embed), dim=1)
-
     def prepare_tokens(self, x):
-        B, nc, w, h = x.shape
+        # B, nc, w, h = x.shape
         x = self.patch_embed(x)  # patch linear embedding
 
-        # add the [CLS] token to the embed patch tokens
-        cls_tokens = self.cls_token.expand(B, -1, -1)
-        x = torch.cat((cls_tokens, x), dim=1)
-
-        if self.positional_encoding == "2dsinus":
+        if self.positional_encoding == "learned":
             # add positional encoding to each token
-            x = x + self.interpolate_pos_encoding(x, w, h)
+            x = x + self.pos_embed
 
         return self.pos_drop(x)
 
@@ -527,11 +523,8 @@ class VisionMetaformer(nn.Module):
         for blk in self.blocks:
             x = blk(x)
         x = self.norm(x)
-        # Performance/usability improvement idea: average pooling to get from B,N,D -> B,1,D -> B,D + lin layer (D->num_classes)
 
-        x = x[:, 0]  # take only the values corresponding to the classifier token
-        x = self.head(x)  # possibly apply classifier head
-
+        x = self.head(x)
         return x
 
 
