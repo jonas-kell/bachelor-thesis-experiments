@@ -21,6 +21,14 @@ Will apply inverse of the ImageNet normalization beforehand.
 python3 main.py show "<<path/to/tensor>>"
 ```
 
+### Show a stored image
+
+Lets you display an image that is stored on file as an image.
+
+```cmd
+python3 main.py show_image "<<path/to/image>>"
+```
+
 ### Evaluate a stored model
 
 Lets you evaluate a model on custom images to check on its behavior.
@@ -35,12 +43,7 @@ python3 main.py eval "<<path/to/stored/model>>"
 Example model paths for my system:
 
 ```
-"/media/jonas/69B577D0C4C25263/MLData/tensorboard/ML-Perceptron-RandSize/model_38.pth"
-"/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/momentum_0.9/model_29.pth"
-"/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/momentum_0/model_51.pth"
-"/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0/model_60.pth"
-"/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0.1/model_54.pth"
-"/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-TINY/momentum_0.9/model_24.pth"
+"/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/adamw/model_41.pt"
 ```
 
 ### Default Training pass
@@ -68,4 +71,10 @@ At the moment the following parameters are available:
 "batch_size=128"
 "loss_fn_name=cross_entropy_loss"
 "optimizer_name=sgd"
+```
+
+A training pass can be continued at the point of each epoch:
+
+```cmd
+python3 main.py train continue=<<path/to/tensorboard/log/folder>>
 ```
