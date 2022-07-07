@@ -40,6 +40,19 @@ from models.res_net import res_net, res_net_pretrained
 from models.metaformer import basic, conformer, poolformer, graph_poolformer
 from models.sail_sg_poolformer import poolformer_s12
 
+available_models = {  # add custom configurations in this dict
+    "ML-Perceptron-RandSize": NeuralNetwork,
+    "RES-NET": res_net,
+    "RES-NET-PRETRAINED": res_net_pretrained,
+    "DINO-TINY": vit_tiny,
+    "DINO-CLASSIFIER": vit_custom,
+    "METAFORMER-BASE": basic,
+    "POOLFORMER": poolformer,
+    "GRAPH-POOLFORMER": graph_poolformer,
+    "CONFORMER": conformer,
+    "PAPER-POOLFORMER": poolformer_s12,
+}
+
 
 def prepare_data(
     constants: PathAndFolderConstants,
@@ -69,7 +82,16 @@ def evaluate(
 
     print("Using model: " + path_to_model_file + " to evaluate images")
 
-    evaluate_model(device, path_to_model_file, resize_normalize_to_tensor, mapper)
+    hyperparam_dict = os.path.dirname(path_to_model_file)
+    backloaded_params = get_hyperparameter_dict(hyperparam_dict)
+
+    model_name = backloaded_params["model_name"]
+
+    model = available_models[model_name]()
+
+    evaluate_model(
+        device, model, path_to_model_file, resize_normalize_to_tensor, mapper
+    )
 
 
 if __name__ == "__main__":
@@ -101,18 +123,6 @@ if __name__ == "__main__":
         types = inspect.getfullargspec(train_model).annotations
         args_to_pass = {}
 
-        available_models = {  # add custom configurations in this dict
-            "ML-Perceptron-RandSize": NeuralNetwork,
-            "RES-NET": res_net,
-            "RES-NET-PRETRAINED": res_net_pretrained,
-            "DINO-TINY": vit_tiny,
-            "DINO-CLASSIFIER": vit_custom,
-            "METAFORMER-BASE": basic,
-            "POOLFORMER": poolformer,
-            "GRAPH-POOLFORMER": graph_poolformer,
-            "CONFORMER": conformer,
-            "PAPER-POOLFORMER": poolformer_s12,
-        }
         args_to_pass["model_name"] = list(available_models.keys())[0]
 
         continue_training = False

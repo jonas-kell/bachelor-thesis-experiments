@@ -2,32 +2,24 @@ from typing import Literal
 from numpy import Infinity
 import torch
 from SynsetMapper import SynsetMapper
-import sys
 import os
 import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 from PIL import Image
-
-# the used model definition must be available in a file in the following folder
-
-
-# ML-Perceptron: can be importet, if the path to ML-Perceptron-RandSize/mlp.py is set
-sys.path.append(
-    "/media/jonas/69B577D0C4C25263/MLData/tensorboard/ML-Perceptron-RandSize/"
-)
-
-# Transformer-tests: can be importet, if the path to DINO-CLASSIFIER/vision_transformer.py is set
-sys.path.append("/media/jonas/69B577D0C4C25263/MLData/tensorboard/DINO-CLASSIFIER/")
+import torch.nn as nn
 
 
 def evaluate_model(
     device: Literal["cuda", "cpu"],
+    model: nn.Module,
     path_to_model_data: str,
     preprocessing_transformation,
     mapper: SynsetMapper,
 ):
     # load model
-    model = torch.load(path_to_model_data)
+    checkpoint = torch.load(path_to_model_data)
+    model.load_state_dict(checkpoint["model_state_dict"])
+
     model.to(device)
 
     # image files to process
