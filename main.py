@@ -163,7 +163,7 @@ if __name__ == "__main__":
             for param in backloaded_params:
                 if (
                     param in supported_args and not param in args_to_pass
-                ):  # allowed parameter, that is not already set
+                ) or param == "model_name":  # allowed parameter, that is not already set
                     if param == "model_name":
                         args_to_pass["model_name"] = backloaded_params[param]
                         print(f"Model overwrite to: {backloaded_params[param]}")

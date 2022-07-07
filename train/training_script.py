@@ -244,20 +244,23 @@ def train_model(
         pin_memory=pin_memory,
     )
 
+    tensorboard_folder = "UNSET"
     # log writer
     flush_secs = 2
     if is_continuing_training:
-        writer = SummaryWriter(
-            continue_training_path,
-            flush_secs=flush_secs,
-        )
+        tensorboard_folder = continue_training_path
     else:
         run_date = datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
         run_name = model_name + "_at_" + run_date
-        writer = SummaryWriter(
+
+        tensorboard_folder = (
             os.path.join(constants.path_to_tensorboard_log_folder, run_name),
-            flush_secs=flush_secs,
         )
+
+    writer = SummaryWriter(
+        tensorboard_folder,
+        flush_secs=flush_secs,
+    )
 
     if not is_continuing_training:
         # log hyperparameters to file
@@ -319,8 +322,7 @@ def train_model(
                     "optimizer_state_dict": optimizer.state_dict(),
                 },
                 os.path.join(
-                    constants.path_to_tensorboard_log_folder,
-                    run_name,
+                    tensorboard_folder,
                     "model_" + str(t) + ".pth",
                 ),
             )
