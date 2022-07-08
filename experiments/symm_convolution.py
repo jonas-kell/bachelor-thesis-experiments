@@ -6,13 +6,12 @@ import sys
 script_dir = os.path.dirname(__file__)
 helper_dir = os.path.join(script_dir, "../models/helpers")
 sys.path.append(helper_dir)
-from SymmConv2d import SymmDepthSepConv2d, SymmConv2d
+from SymmConv2d import SymmDepthSepConv2d
 
 
 # test the symmetric convolution
 input_size = 4
 channels_in = 2
-channels_out = 3
 batch = 3
 
 x_unbatched = torch.linspace(
@@ -28,47 +27,45 @@ x_batched = torch.linspace(
 
 
 symm_conf = SymmDepthSepConv2d(
-    in_channels=channels_in,
-    out_channels=channels_out,
-    depthwise_multiplier=1,
+    channels=channels_in,
     has_nn=True,
     has_nnn=True,
     bias=False,
 )
 optimizer = torch.optim.SGD(
     symm_conf.parameters(),
-    lr=0.1,
+    lr=0.01,
 )
 loss_fn = nn.L1Loss()
 
 # test unbatched
 optimizer.zero_grad()
 result = symm_conf(x_unbatched)
-loss = loss_fn(result, torch.zeros_like(result))
+loss = loss_fn(result, torch.ones_like(result))
 loss.backward()
 optimizer.step()
 
 print(result)
-# print(symm_conf.center_params.data)
-# print(symm_conf.nn_params.data)
-# print(symm_conf.nnn_params.data)
+print(symm_conf.center_params.data)
+print(symm_conf.nn_params.data)
+print(symm_conf.nnn_params.data)
 
-# print(symm_conf.center.weight.data)
-# print(symm_conf.nn.weight.data)
-# print(symm_conf.nnn.weight.data)
+print(symm_conf.center_weight_template.data)
+print(symm_conf.nn_weight_template.data)
+print(symm_conf.nnn_weight_template.data)
 
 # test batched
 optimizer.zero_grad()
 result = symm_conf(x_batched)
-loss = loss_fn(result, torch.zeros_like(result))
+loss = loss_fn(result, torch.ones_like(result))
 loss.backward()
 optimizer.step()
 
 print(result)
-# print(symm_conf.center_params.data)
-# print(symm_conf.nn_params.data)
-# print(symm_conf.nnn_params.data)
+print(symm_conf.center_params.data)
+print(symm_conf.nn_params.data)
+print(symm_conf.nnn_params.data)
 
-# print(symm_conf.center.weight.data)
-# print(symm_conf.nn.weight.data)
-# print(symm_conf.nnn.weight.data)
+print(symm_conf.center_weight_template.data)
+print(symm_conf.nn_weight_template.data)
+print(symm_conf.nnn_weight_template.data)
