@@ -22,7 +22,7 @@ from typing import Literal
 import torch
 import torch.nn as nn
 from helpers.trunc_normal import trunc_normal_
-from helpers.SymmConv2d import SymmConv2d, SymmDepthSepConv2d, DepthSepConv2d
+from helpers.SymmConv2d import SymmDepthSepConv2d, DepthSepConv2d
 from helpers.adjacency_matrix import (
     nn_matrix,
     nnn_matrix,
@@ -116,6 +116,9 @@ class Attention(nn.Module):
         qk_scale=None,
         attn_drop=0.0,
         proj_drop=0.0,
+        mixing_symmetry: Literal[
+            "arbitrary", "symm_nn", "symm_nnn"
+        ] = "arbitrary",  # TODO use
     ):
         super().__init__()
         self.num_heads = num_heads
@@ -156,9 +159,6 @@ class Block(nn.Module):
         drop_path=0.0,
         act_layer=nn.GELU,
         norm_layer=nn.LayerNorm,
-        # graph parameters
-        graph_layer: Literal["none", "symm_nn", "symm_nnn"] = "none",
-        average_graph_connections: bool = True,
     ):
         super().__init__()
         self.norm1 = norm_layer(dim)
@@ -172,16 +172,10 @@ class Block(nn.Module):
             act_layer=act_layer,
             drop=drop,
         )
-        self.graph_masking = GraphMask(
-            graph_layer=graph_layer,
-            average_graph_connections=average_graph_connections,
-        )
 
     def forward(self, x):
         y = self.norm1(x)
         y = self.token_mixer(y)
-
-        y = self.graph_masking(y)
 
         x = x + self.drop_path(y)
 
@@ -195,176 +189,125 @@ class Block(nn.Module):
 class TokenMixer(nn.Module):
     def __init__(
         self,
-        token_mixer: Literal["attention", "pooling", "convolution"] = "attention",
-        dim=768,
-        drop=0,
+        drop: int,
+        # reshaping info
+        embed_dim: int,
+        num_patches: int,
+        patch_nr_side_length: int,
+        # token mixing
+        token_mixer: Literal[
+            "attention",
+            "pooling",
+            "depthwise-convolution",
+            "graph-convolution",
+            "full-convolution",
+        ] = "attention",
+        mixing_symmetry: Literal["arbitrary", "symm_nn", "symm_nnn"] = "arbitrary",
         # attention specific arguments
         num_heads=12,
         qkv_bias=False,
         qk_scale=None,
         attn_drop_rate=0.0,
-        # unroll arguments
-        embed_dim_unroll_a=24,
-        embed_dim_unroll_b=32,
         # pooling specific arguments
-        pool_size=3,
-        # convolution specific arguments
-        num_patches: int = 196,
-        depthwise_convolution: bool = True,
-        convolution_type: Literal["arbitrary", "symm_nn", "symm_nnn"] = "arbitrary",
+        pool_size=3,  # for comparability with graph-poolformer, pooling is always average pooling
     ):
         super().__init__()
+        # ! attention
         if token_mixer == "attention":
+            self.unroll_needed = False
             self.token_mixer = Attention(
-                dim,
+                embed_dim,
                 num_heads=num_heads,
                 qkv_bias=qkv_bias,
                 qk_scale=qk_scale,
                 attn_drop=attn_drop_rate,
                 proj_drop=drop,
+                mixing_symmetry=mixing_symmetry,
             )
-        elif token_mixer == "pooling":
-            self.token_mixer = nn.AvgPool2d(
-                pool_size, 1, pool_size // 2, count_include_pad=False
-            )
-        elif token_mixer == "convolution":
-            use_bias = True
 
-            if depthwise_convolution:
-                # depthwise-seperable convolution
-                if convolution_type == "arbitrary":
-                    self.token_mixer = DepthSepConv2d(
-                        num_patches,
-                        num_patches,
-                        3,
-                        depthwise_multiplier=1,
-                        bias=use_bias,
-                        padding=3 // 2,
-                    )
-                elif convolution_type == "symm_nn":
-                    self.token_mixer = SymmDepthSepConv2d(
-                        num_patches,
-                        num_patches,
-                        depthwise_multiplier=1,
-                        has_nn=True,
-                        has_nnn=False,
-                        bias=use_bias,
-                        padding=3 // 2,
-                    )
-                elif convolution_type == "symm_nnn":
-                    self.token_mixer = SymmDepthSepConv2d(
-                        num_patches,
-                        num_patches,
-                        depthwise_multiplier=1,
-                        has_nn=True,
-                        has_nnn=True,
-                        bias=use_bias,
-                        padding=3 // 2,
-                    )
-                else:
-                    raise RuntimeError(
-                        f"convolution_type '{convolution_type}' not implemented"
-                    )
+        # ! pooling
+        elif token_mixer == "pooling":
+            self.unroll_needed = True
+            if mixing_symmetry == "arbitrary":
+                self.token_mixer = nn.AvgPool2d(
+                    kernel_size=pool_size,
+                    stride=1,
+                    padding=pool_size // 2,
+                    count_include_pad=False,
+                )
+            elif mixing_symmetry == "symm_nn":
+                pass  # TODO
+            elif mixing_symmetry == "symm_nnn":
+                pass  # TODO
             else:
-                # default convolution
-                if convolution_type == "arbitrary":
-                    self.token_mixer = nn.Conv2d(
-                        num_patches, num_patches, 3, 1, 3 // 2, bias=use_bias
-                    )
-                elif convolution_type == "symm_nn":
-                    self.token_mixer = SymmConv2d(
-                        num_patches,
-                        num_patches,
-                        has_nn=True,
-                        has_nnn=False,
-                        bias=use_bias,
-                        stride=1,
-                        padding=3 // 2,
-                    )
-                elif convolution_type == "symm_nnn":
-                    self.token_mixer = self.token_mixer = SymmConv2d(
-                        num_patches,
-                        num_patches,
-                        has_nn=True,
-                        has_nnn=True,
-                        bias=use_bias,
-                        stride=1,
-                        padding=3 // 2,
-                    )
-                else:
-                    raise RuntimeError(
-                        f"convolution_type '{convolution_type}' not implemented"
-                    )
+                raise RuntimeError(
+                    f"Mixing symmetry modifier {mixing_symmetry} not supported"
+                )
+
+        # ! depthwise convolution
+        elif token_mixer == "depthwise-convolution":
+            self.unroll_needed = True
+            use_bias = True
+            if mixing_symmetry == "arbitrary":
+                pass  # TODO
+            elif mixing_symmetry == "symm_nn":
+                pass  # TODO
+            elif mixing_symmetry == "symm_nnn":
+                pass  # TODO
+            else:
+                raise RuntimeError(
+                    f"Mixing symmetry modifier {mixing_symmetry} not supported"
+                )
+
+        # ! graph convolution
+        elif token_mixer == "graph-convolution":
+            self.unroll_needed = False
+            use_bias = True
+            if mixing_symmetry not in ["symm_nn", "symm_nnn"]:
+                raise RuntimeError(
+                    f"Mixing symmetry modifier {mixing_symmetry} not supported"
+                )
+            # TODO
+
+        # ! full convolution
+        elif token_mixer == "full-convolution":
+            self.unroll_needed = True
+            use_bias = True
+            if mixing_symmetry != "arbitrary":
+                raise RuntimeError(
+                    f"Mixing symmetry modifier {mixing_symmetry} not supported"
+                )
+            self.token_mixer = nn.Conv2d(
+                in_channels=embed_dim,
+                out_channels=embed_dim,
+                kernel_size=3,
+                stride=1,
+                padding="same",
+                bias=use_bias,
+            )
+
         else:
             raise RuntimeError(f"Token mixing operation {token_mixer} not supported")
 
-        self.unroll_needed = token_mixer == "convolution" or token_mixer == "pooling"
-        self.embed_dim_unroll_a = embed_dim_unroll_a
-        self.embed_dim_unroll_b = embed_dim_unroll_b
+        self.num_patches = num_patches
+        self.patch_nr_side_length = patch_nr_side_length
 
     def forward(self, x):
         if self.unroll_needed:
-            shape = x.shape
-            x = x.reshape(*shape[:-1], self.embed_dim_unroll_a, self.embed_dim_unroll_b)
+            x = rearrange(
+                x,
+                "b n d -> b d (h w)",
+                h=self.patch_nr_side_length,
+                w=self.patch_nr_side_length,
+            )
 
         x = self.token_mixer(x)
 
         if self.unroll_needed:
-            x = x.reshape(shape)
-
-        return x
-
-
-class GraphMask(nn.Module):
-    def __init__(
-        self,
-        graph_layer: Literal["none", "symm_nn", "symm_nnn"] = "none",
-        average_graph_connections: bool = True,
-        size=14,  # TODO make adaptive
-    ):
-        super().__init__()
-
-        self.apply_graph = graph_layer != "none"
-
-        nn_factor = 1
-        nnn_factor = 0.5
-
-        # graph gets applied
-        if self.apply_graph:
-
-            if average_graph_connections:
-                if graph_layer == "symm_nn":
-                    numpy_matrix = nn_factor * transform_adjacency_matrix(
-                        nn_matrix(size), False, "avg+1"
-                    )
-                elif graph_layer == "symm_nnn":
-                    numpy_matrix = nn_factor * transform_adjacency_matrix(
-                        nn_matrix(size), False, "avg+1"
-                    ) + nnn_factor * transform_adjacency_matrix(
-                        nnn_matrix(size), False, "avg+1"
-                    )
-            else:
-                if graph_layer == "symm_nn":
-                    numpy_matrix = nn_factor * transform_adjacency_matrix(
-                        nn_matrix(size), False, "sum"
-                    )
-                elif graph_layer == "symm_nnn":
-                    numpy_matrix = nn_factor * transform_adjacency_matrix(
-                        nn_matrix(size), False, "sum"
-                    ) + nnn_factor * transform_adjacency_matrix(
-                        nnn_matrix(size), False, "sum"
-                    )
-
-            self.graph_mask = nn.Parameter(
-                torch.tensor(numpy_matrix, dtype=torch.float32), requires_grad=False
+            x = x = rearrange(
+                x,
+                "b d n -> b n d",
             )
-
-    def forward(self, x):
-        if not self.apply_graph:
-            return x
-
-        # graph gets applied
-        x = torch.matmul(self.graph_mask, x)
 
         return x
 
@@ -403,37 +346,31 @@ class VisionMetaformer(nn.Module):
         in_chans=3,
         num_classes=0,
         embed_dim=768,
-        embed_dim_unroll_a=24,
-        embed_dim_unroll_b=32,
         depth=12,
         mlp_ratio=4.0,
         drop_rate=0.0,
         drop_path_rate=0.0,
         norm_layer=nn.LayerNorm,
+        # token mixing
         positional_encoding: Literal["none", "learned"] = "learned",
-        token_mixer: Literal["attention", "pooling", "convolution"] = "attention",
-        # graph parameters
-        graph_layer: Literal["none", "symm_nn", "symm_nnn"] = "none",
-        average_graph_connections: bool = True,
+        token_mixer: Literal[
+            "attention",
+            "pooling",
+            "depthwise-convolution",
+            "graph-convolution",
+            "full-convolution",
+        ] = "attention",
+        mixing_symmetry: Literal["arbitrary", "symm_nn", "symm_nnn"] = "arbitrary",
         # attention specific arguments
         num_heads=12,
         qkv_bias=False,
         qk_scale=None,
         attn_drop_rate=0.0,
         # pooling specific arguments
-        pool_size=3,  # for spimplicity, pooling is always average pooling
-        # convolution specific arguments
-        depthwise_convolution: bool = True,
-        convolution_type: Literal["arbitrary", "symm_nn", "symm_nnn"] = "arbitrary",
+        pool_size=3,
     ):
         super().__init__()
         self.num_features = self.embed_dim = embed_dim
-
-        # make sure, the embedding can be reasonably be unrolled again
-        if embed_dim_unroll_a * embed_dim_unroll_b != self.embed_dim:
-            raise RuntimeError(
-                f"embed_dim_unroll_a * embed_dim_unroll_b is expected to be embed_dim. {embed_dim_unroll_a} * {embed_dim_unroll_b} = {embed_dim_unroll_a * embed_dim_unroll_b} given, but {embed_dim} expected"
-            )
 
         self.positional_encoding = positional_encoding
 
@@ -444,6 +381,13 @@ class VisionMetaformer(nn.Module):
             embed_dim=embed_dim,
         )
         num_patches = self.patch_embed.num_patches
+        patch_nr_side_length = int(math.sqrt(num_patches))
+
+        # make sure, the embedding can be reasonably unrolled again
+        if patch_nr_side_length * patch_nr_side_length != self.num_patches:
+            raise RuntimeError(
+                f"Vison metaformer currently only supports square nr of patches encoding"
+            )
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim))
@@ -457,37 +401,31 @@ class VisionMetaformer(nn.Module):
                 Block(
                     dim=embed_dim,
                     token_mixer=TokenMixer(
-                        token_mixer=token_mixer,
-                        dim=embed_dim,
                         drop=drop_rate,
+                        # reshaping info
+                        num_patches=num_patches,
+                        patch_nr_side_length=patch_nr_side_length,
+                        embed_dim=embed_dim,
+                        # token mixing
+                        token_mixer=token_mixer,
+                        mixing_symmetry=mixing_symmetry,
                         # attention specific arguments
                         num_heads=num_heads,
                         qkv_bias=qkv_bias,
                         qk_scale=qk_scale,
                         attn_drop_rate=attn_drop_rate,
-                        # unroll arguments
-                        embed_dim_unroll_a=embed_dim_unroll_a,
-                        embed_dim_unroll_b=embed_dim_unroll_b,
                         # pooling specific arguments
                         pool_size=pool_size,
-                        # convolution specific arguments
-                        num_patches=num_patches,
-                        depthwise_convolution=depthwise_convolution,
-                        convolution_type=convolution_type,
                     ),
                     mlp_ratio=mlp_ratio,
                     drop=drop_rate,
                     drop_path=dpr[i],
                     norm_layer=norm_layer,
-                    # graph parameters
-                    graph_layer=graph_layer,
-                    average_graph_connections=average_graph_connections,
                 )
                 for i in range(depth)
             ]
         )
         self.norm = norm_layer(embed_dim)
-        self.head_pool = nn.AvgPool1d(3)
 
         # (Classifier) head
         self.head = AveragingConvolutionHead(
@@ -533,8 +471,6 @@ def tiny_parameters() -> VisionMetaformer:
         VisionMetaformer,
         patch_size=16,
         embed_dim=192,
-        embed_dim_unroll_a=16,
-        embed_dim_unroll_b=12,
         depth=12,
         mlp_ratio=4,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
@@ -542,50 +478,110 @@ def tiny_parameters() -> VisionMetaformer:
     )
 
 
-def basic(**kwargs):
-    return tiny_parameters()(num_heads=3, qkv_bias=True, **kwargs)
+def vision_transformer(**kwargs):
+    return tiny_parameters()(
+        num_heads=3, qkv_bias=True, positional_encoding="learned", **kwargs
+    )
 
 
-def graph_transformer_nn(**kwargs):
+def graph_vision_transformer_nn(**kwargs):
     return tiny_parameters()(
         token_mixer="attention",
         num_heads=3,
         qkv_bias=True,
         graph_layer="symm_nn",
-        average_graph_connections=True,
+        positional_encoding="learned",
         **kwargs,
     )
 
 
-def graph_transformer_nnn(**kwargs):
+def graph_vision_transformer_nnn(**kwargs):
     return tiny_parameters()(
         token_mixer="attention",
         num_heads=3,
         qkv_bias=True,
         graph_layer="symm_nnn",
-        average_graph_connections=True,
+        positional_encoding="learned",
         **kwargs,
     )
 
 
 def poolformer(**kwargs):
-    return tiny_parameters()(token_mixer="pooling", **kwargs)
-
-
-def graph_poolformer(**kwargs):
     return tiny_parameters()(
         token_mixer="pooling",
-        graph_layer="symm_nnn",
-        average_graph_connections=True,
+        positional_encoding="none",
+        mixing_symmetry="arbitrary",
         **kwargs,
     )
 
 
-def conformer(**kwargs):
+def graph_poolformer_nn(**kwargs):
     return tiny_parameters()(
-        token_mixer="convolution",
-        depthwise_convolution=True,
-        convolution_type="symm_nnn",
+        token_mixer="pooling",
+        mixing_symmetry="symm_nn",
+        positional_encoding="none",
+        **kwargs,
+    )
+
+
+def graph_poolformer_nnn(**kwargs):
+    return tiny_parameters()(
+        token_mixer="pooling",
+        mixing_symmetry="symm_nnn",
+        positional_encoding="none",
+        **kwargs,
+    )
+
+
+def depthwise_conformer(**kwargs):
+    return tiny_parameters()(
+        token_mixer="depthwise-convolution",
+        mixing_symmetry="arbitrary",
+        positional_encoding="none",
+        **kwargs,
+    )
+
+
+def symmetric_depthwise_conformer_nn(**kwargs):
+    return tiny_parameters()(
+        token_mixer="depthwise-convolution",
+        mixing_symmetry="symm_nn",
+        positional_encoding="none",
+        **kwargs,
+    )
+
+
+def symmetric_depthwise_conformer_nnn(**kwargs):
+    return tiny_parameters()(
+        token_mixer="depthwise-convolution",
+        mixing_symmetry="symm_nnn",
+        positional_encoding="none",
+        **kwargs,
+    )
+
+
+def symmetric_graph_depthwise_conformer_nn(**kwargs):
+    return tiny_parameters()(
+        token_mixer="graph-convolution",
+        mixing_symmetry="symm_nn",
+        positional_encoding="none",
+        **kwargs,
+    )
+
+
+def symmetric_graph_depthwise_conformer_nnn(**kwargs):
+    return tiny_parameters()(
+        token_mixer="graph-convolution",
+        mixing_symmetry="symm_nnn",
+        positional_encoding="none",
+        **kwargs,
+    )
+
+
+def full_conformer_nnn(**kwargs):
+    return tiny_parameters()(
+        token_mixer="full-convolution",
+        mixing_symmetry="arbitrary",
         positional_encoding="none",
         **kwargs,
     )
