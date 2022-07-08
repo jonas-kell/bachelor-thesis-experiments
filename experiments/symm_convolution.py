@@ -30,7 +30,7 @@ symm_conf = SymmDepthSepConv2d(
     channels=channels_in,
     has_nn=True,
     has_nnn=True,
-    bias=False,
+    bias=True,
 )
 optimizer = torch.optim.SGD(
     symm_conf.parameters(),

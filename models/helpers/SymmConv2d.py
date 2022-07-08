@@ -46,8 +46,19 @@ class SymmDepthSepConv2d(nn.Module):
         self.channels = channels
         self.has_nn = has_nn
         self.has_nnn = has_nnn
-        self.bias = bias
         self.padding_mode = padding_mode
+
+        # bias
+        self.bias = (
+            nn.Parameter(
+                torch.empty(self.channels),
+                requires_grad=True,
+            )
+            if bias
+            else None
+        )
+        if self.bias is not None:
+            nn.init.normal_(self.bias.data)
 
         # center element of the 3x3 convolution kernel
         self.center_weight_template = nn.Parameter(
