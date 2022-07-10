@@ -24,9 +24,11 @@ import torch.nn as nn
 from helpers.trunc_normal import trunc_normal_
 from helpers.SymmConv2d import SymmDepthSepConv2d, DepthSepConv2d
 from helpers.adjacency_matrix import (
+    self_matrix,
     nn_matrix,
     nnn_matrix,
     transform_adjacency_matrix,
+    transform_zero_matrix_to_neg_infinity,
 )
 from einops import rearrange
 
@@ -116,9 +118,8 @@ class Attention(nn.Module):
         qk_scale=None,
         attn_drop=0.0,
         proj_drop=0.0,
-        mixing_symmetry: Literal[
-            "arbitrary", "symm_nn", "symm_nnn"
-        ] = "arbitrary",  # TODO use
+        mixing_symmetry: Literal["arbitrary", "symm_nn", "symm_nnn"] = "arbitrary",
+        patch_nr_side_length: int = 14,
     ):
         super().__init__()
         self.num_heads = num_heads
@@ -308,6 +309,66 @@ class TokenMixer(nn.Module):
                 x,
                 "b d n -> b n d",
             )
+
+        return x
+
+
+class GraphMask(nn.Module):
+    def __init__(
+        self,
+        size: int = 14,
+        apply_graph=True,  # False makes layer to nn.Identity for better integratability
+        graph_layer: Literal["symm_nn", "symm_nnn"] = "symm_nn",
+        average_graph_connections: bool = False,
+        zero_to_neg_infinity: bool = False,
+        learnable_factors: bool = False,
+    ):
+        super().__init__()
+
+        self.apply_graph = apply_graph
+
+        nn_factor = 1
+        nnn_factor = 1
+
+        if self.apply_graph:
+
+            numpy_matrix = transform_adjacency_matrix(
+                self_matrix(size),
+                False,
+                "avg+1" if average_graph_connections else "sum",
+            )
+
+            if graph_layer == "symm_nn":
+                numpy_matrix += nn_factor * transform_adjacency_matrix(
+                    nn_matrix(size),
+                    False,
+                    "avg+1" if average_graph_connections else "sum",
+                )
+            elif graph_layer == "symm_nnn":
+                numpy_matrix += nn_factor * transform_adjacency_matrix(
+                    nn_matrix(size),
+                    False,
+                    "avg+1" if average_graph_connections else "sum",
+                ) + nnn_factor * transform_adjacency_matrix(
+                    nnn_matrix(size),
+                    False,
+                    "avg+1" if average_graph_connections else "sum",
+                )
+
+            if zero_to_neg_infinity:
+                transform_zero_matrix_to_neg_infinity(numpy_matrix)
+
+            self.graph_mask = nn.Parameter(
+                torch.tensor(numpy_matrix, dtype=torch.float32, requires_grad=False),
+                requires_grad=False,
+            )
+
+    def forward(self, x):
+        if not self.apply_graph:
+            return x
+
+        # graph gets applied
+        x = torch.matmul(self.graph_mask, x)
 
         return x
 

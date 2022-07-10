@@ -92,6 +92,12 @@ def adjacency_matrix_from_locally_applied_kernel(
     return result
 
 
+def self_matrix(n: int):
+    assert n > 0
+
+    return np.eye(n * n, dtype=np.bool8)
+
+
 def nn_matrix(n: int):
     assert n > 0
     kernel = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]], dtype=np.bool8)
