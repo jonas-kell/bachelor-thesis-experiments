@@ -253,8 +253,8 @@ def train_model(
         run_date = datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S")
         run_name = model_name + "_at_" + run_date
 
-        tensorboard_folder = (
-            os.path.join(constants.path_to_tensorboard_log_folder, run_name),
+        tensorboard_folder = os.path.join(
+            constants.path_to_tensorboard_log_folder, run_name
         )
 
     writer = SummaryWriter(
