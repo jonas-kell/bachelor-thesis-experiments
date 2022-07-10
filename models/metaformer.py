@@ -275,18 +275,18 @@ class TokenMixer(nn.Module):
             use_bias = True
             if mixing_symmetry == "arbitrary":
                 self.token_mixer = DepthSepConv2d(
-                    channels=num_patches, kernel_size=3, bias=use_bias
+                    channels=embed_dim, kernel_size=3, bias=use_bias
                 )
             elif mixing_symmetry == "symm_nn":
                 self.token_mixer = SymmDepthSepConv2d(
-                    channels=num_patches,
+                    channels=embed_dim,
                     has_nn=True,
                     has_nnn=False,
                     bias=use_bias,
                 )
             elif mixing_symmetry == "symm_nnn":
                 self.token_mixer = SymmDepthSepConv2d(
-                    channels=num_patches,
+                    channels=embed_dim,
                     has_nn=True,
                     has_nnn=True,
                     bias=use_bias,
