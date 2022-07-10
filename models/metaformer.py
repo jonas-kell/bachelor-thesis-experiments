@@ -130,6 +130,18 @@ class Attention(nn.Module):
         self.proj = nn.Linear(dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
 
+        self.graph_projection = (
+            nn.Identity()  # arbitrary lets this behave as a VT, not a GVT
+            if mixing_symmetry == "arbitrary"
+            else GraphMask(
+                size=patch_nr_side_length,
+                graph_layer=mixing_symmetry,
+                average_graph_connections=True,
+                learnable_factors=True,
+                init_factors=None,  # random
+            )
+        )
+
     def forward(self, x):
         B, N, C = x.shape
         qkv = (
@@ -140,6 +152,9 @@ class Attention(nn.Module):
         q, k, v = qkv[0], qkv[1], qkv[2]
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
+
+        attn = self.graph_projection(attn)  # inserted here, modifies to graph attention
+
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
 
@@ -223,6 +238,7 @@ class TokenMixer(nn.Module):
                 attn_drop=attn_drop_rate,
                 proj_drop=drop,
                 mixing_symmetry=mixing_symmetry,
+                patch_nr_side_length=patch_nr_side_length,
             )
 
         # ! pooling
@@ -238,7 +254,7 @@ class TokenMixer(nn.Module):
             elif mixing_symmetry in ["symm_nn", "symm_nnn"]:
                 self.unroll_needed = False
                 self.token_mixer = GraphMask(
-                    size=num_patches,
+                    size=patch_nr_side_length,
                     graph_layer=mixing_symmetry,
                     average_graph_connections=True,  # pooling averages the data
                     learnable_factors=False,  # pooling has no learnable parameters
@@ -289,7 +305,7 @@ class TokenMixer(nn.Module):
                     f"Mixing symmetry modifier {mixing_symmetry} not supported"
                 )
             self.token_mixer = GraphMask(
-                size=num_patches,
+                size=patch_nr_side_length,
                 graph_layer=mixing_symmetry,
                 average_graph_connections=False,  # convolution is only multiply-add operation
                 learnable_factors=True,
@@ -504,7 +520,7 @@ class VisionMetaformer(nn.Module):
         patch_nr_side_length = int(math.sqrt(num_patches))
 
         # make sure, the embedding can be reasonably unrolled again
-        if patch_nr_side_length * patch_nr_side_length != self.num_patches:
+        if patch_nr_side_length * patch_nr_side_length != num_patches:
             raise RuntimeError(
                 f"Vison metaformer currently only supports square nr of patches encoding"
             )
@@ -609,7 +625,7 @@ def graph_vision_transformer_nn(**kwargs):
         token_mixer="attention",
         num_heads=3,
         qkv_bias=True,
-        graph_layer="symm_nn",
+        mixing_symmetry="symm_nn",
         positional_encoding="learned",
         **kwargs,
     )
@@ -620,7 +636,7 @@ def graph_vision_transformer_nnn(**kwargs):
         token_mixer="attention",
         num_heads=3,
         qkv_bias=True,
-        graph_layer="symm_nnn",
+        mixing_symmetry="symm_nnn",
         positional_encoding="learned",
         **kwargs,
     )
