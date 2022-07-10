@@ -10,10 +10,10 @@ from metaformer import GraphMask
 
 mask = GraphMask(
     size=3,
-    apply_graph=True,
-    graph_layer="symm_nn",
-    average_graph_connections=True,
-    learnable_factors=False,
+    graph_layer="symm_nnn",
+    average_graph_connections=False,
+    learnable_factors=True,
+    init_factors=[1, 1, 1],
 )
 
 input_size = 5
@@ -31,5 +31,23 @@ x_batched = torch.linspace(
 ).reshape(batch, channels_in, input_size)
 print(x_batched)
 
-print(mask(x_unbatched))
+
+optimizer = torch.optim.SGD(
+    mask.parameters(),
+    lr=0.01,
+)
+loss_fn = nn.L1Loss()
+
+# test unbatched
+optimizer.zero_grad()
+result = mask(x_unbatched)
+loss = loss_fn(result, torch.ones_like(result))
+loss.backward()
+optimizer.step()
+
+print(result)
+print(mask.factors)
+print(mask.center_weight_template)
+print(mask.nn_weight_template)
+print(mask.nnn_weight_template)
 print(mask(x_batched))

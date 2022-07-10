@@ -317,58 +317,93 @@ class GraphMask(nn.Module):
     def __init__(
         self,
         size: int = 14,
-        apply_graph=True,  # False makes layer to nn.Identity for better integratability
         graph_layer: Literal["symm_nn", "symm_nnn"] = "symm_nn",
         average_graph_connections: bool = False,
         zero_to_neg_infinity: bool = False,
         learnable_factors: bool = False,
+        init_factors=None,
     ):
         super().__init__()
 
-        self.apply_graph = apply_graph
+        self.learnable_factors = learnable_factors
+        self.zero_to_neg_infinity = zero_to_neg_infinity
+        self.graph_layer = graph_layer
 
-        nn_factor = 1
-        nnn_factor = 1
-
-        if self.apply_graph:
-
-            numpy_matrix = transform_adjacency_matrix(
-                self_matrix(size),
-                False,
-                "avg+1" if average_graph_connections else "sum",
+        self.factors = nn.Parameter(
+            torch.tensor(
+                [1, 1, 1], dtype=torch.float32, requires_grad=learnable_factors
+            ),
+            requires_grad=learnable_factors,
+        )
+        if init_factors is not None:
+            values = torch.tensor(
+                init_factors, dtype=torch.float32, requires_grad=learnable_factors
             )
+            assert list(values.shape) == list([3])
+            self.factors.data = values
+        else:
+            nn.init.normal_(self.factors.data)
 
-            if graph_layer == "symm_nn":
-                numpy_matrix += nn_factor * transform_adjacency_matrix(
+        self.center_weight_template = nn.Parameter(
+            torch.tensor(
+                transform_adjacency_matrix(
+                    self_matrix(size),
+                    False,
+                    "avg+1" if average_graph_connections else "sum",
+                ),
+                dtype=torch.float32,
+                requires_grad=False,
+            ),
+            requires_grad=False,
+        )
+        self.nn_weight_template = nn.Parameter(
+            torch.tensor(
+                transform_adjacency_matrix(
                     nn_matrix(size),
                     False,
                     "avg+1" if average_graph_connections else "sum",
-                )
-            elif graph_layer == "symm_nnn":
-                numpy_matrix += nn_factor * transform_adjacency_matrix(
-                    nn_matrix(size),
-                    False,
-                    "avg+1" if average_graph_connections else "sum",
-                ) + nnn_factor * transform_adjacency_matrix(
+                ),
+                dtype=torch.float32,
+                requires_grad=False,
+            ),
+            requires_grad=False,
+        )
+        self.nnn_weight_template = nn.Parameter(
+            torch.tensor(
+                transform_adjacency_matrix(
                     nnn_matrix(size),
                     False,
                     "avg+1" if average_graph_connections else "sum",
-                )
+                ),
+                dtype=torch.float32,
+                requires_grad=False,
+            ),
+            requires_grad=False,
+        )
 
-            if zero_to_neg_infinity:
-                transform_zero_matrix_to_neg_infinity(numpy_matrix)
-
-            self.graph_mask = nn.Parameter(
-                torch.tensor(numpy_matrix, dtype=torch.float32, requires_grad=False),
+        # precompute for speedup
+        if not self.learnable_factors:
+            self.matrix_cache = nn.Parameter(
+                self.calculate_matrix(),
                 requires_grad=False,
             )
 
-    def forward(self, x):
-        if not self.apply_graph:
-            return x
+    def calculate_matrix(self):
+        matrix = self.factors[0] * self.center_weight_template
 
-        # graph gets applied
-        x = torch.matmul(self.graph_mask, x)
+        if self.graph_layer in ["symm_nn", "symm_nnn"]:
+            matrix += self.factors[1] * self.nn_weight_template
+
+        if self.graph_layer == "symm_nnn":
+            matrix += self.factors[2] * self.nnn_weight_template
+
+        return matrix
+
+    def forward(self, x):
+        if not self.learnable_factors:
+            x = torch.matmul(self.matrix_cache, x)  # use cache
+        else:
+            x = torch.matmul(self.calculate_matrix(), x)
 
         return x
 
