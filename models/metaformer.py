@@ -28,7 +28,6 @@ from helpers.adjacency_matrix import (
     nn_matrix,
     nnn_matrix,
     transform_adjacency_matrix,
-    transform_zero_matrix_to_neg_infinity,
 )
 from einops import rearrange
 
@@ -228,18 +227,27 @@ class TokenMixer(nn.Module):
 
         # ! pooling
         elif token_mixer == "pooling":
-            self.unroll_needed = True
             if mixing_symmetry == "arbitrary":
+                self.unroll_needed = True
                 self.token_mixer = nn.AvgPool2d(
                     kernel_size=pool_size,
                     stride=1,
                     padding=pool_size // 2,
                     count_include_pad=False,
                 )
-            elif mixing_symmetry == "symm_nn":
-                pass  # TODO
-            elif mixing_symmetry == "symm_nnn":
-                pass  # TODO
+            elif mixing_symmetry in ["symm_nn", "symm_nnn"]:
+                self.unroll_needed = False
+                self.token_mixer = GraphMask(
+                    size=num_patches,
+                    graph_layer=mixing_symmetry,
+                    average_graph_connections=True,  # pooling averages the data
+                    learnable_factors=False,  # pooling has no learnable parameters
+                    init_factors=[
+                        1,
+                        1,
+                        1,
+                    ],  # equal for fairness with default pooling. But more suitable weights could be used (as this method is stronger than pooling)
+                )
             else:
                 raise RuntimeError(
                     f"Mixing symmetry modifier {mixing_symmetry} not supported"
@@ -250,11 +258,23 @@ class TokenMixer(nn.Module):
             self.unroll_needed = True
             use_bias = True
             if mixing_symmetry == "arbitrary":
-                pass  # TODO
+                self.token_mixer = DepthSepConv2d(
+                    channels=num_patches, kernel_size=3, bias=use_bias
+                )
             elif mixing_symmetry == "symm_nn":
-                pass  # TODO
+                self.token_mixer = SymmDepthSepConv2d(
+                    channels=num_patches,
+                    has_nn=True,
+                    has_nnn=False,
+                    bias=use_bias,
+                )
             elif mixing_symmetry == "symm_nnn":
-                pass  # TODO
+                self.token_mixer = SymmDepthSepConv2d(
+                    channels=num_patches,
+                    has_nn=True,
+                    has_nnn=True,
+                    bias=use_bias,
+                )
             else:
                 raise RuntimeError(
                     f"Mixing symmetry modifier {mixing_symmetry} not supported"
@@ -268,7 +288,13 @@ class TokenMixer(nn.Module):
                 raise RuntimeError(
                     f"Mixing symmetry modifier {mixing_symmetry} not supported"
                 )
-            # TODO
+            self.token_mixer = GraphMask(
+                size=num_patches,
+                graph_layer=mixing_symmetry,
+                average_graph_connections=False,  # convolution is only multiply-add operation
+                learnable_factors=True,
+                init_factors=None,  # init random
+            )
 
         # ! full convolution
         elif token_mixer == "full-convolution":
@@ -319,14 +345,12 @@ class GraphMask(nn.Module):
         size: int = 14,
         graph_layer: Literal["symm_nn", "symm_nnn"] = "symm_nn",
         average_graph_connections: bool = False,
-        zero_to_neg_infinity: bool = False,
         learnable_factors: bool = False,
         init_factors=None,
     ):
         super().__init__()
 
         self.learnable_factors = learnable_factors
-        self.zero_to_neg_infinity = zero_to_neg_infinity
         self.graph_layer = graph_layer
 
         self.factors = nn.Parameter(

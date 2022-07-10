@@ -30,27 +30,48 @@ constants = PathAndFolderConstants(
     path_to_imagenet_data_folder="/media/jonas/69B577D0C4C25263/MLData/imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC",
     path_to_folder_for_transformed_data="/media/jonas/69B577D0C4C25263/MLData/transformed",
     path_to_validation_solution_file="/media/jonas/69B577D0C4C25263/MLData/imagenet-object-localization-challenge/LOC_val_solution.csv",
-    path_to_tensorboard_log_folder="/media/jonas/69B577D0C4C25263/MLData/tensorboard",
+    path_to_tensorboard_log_folder="/media/jonas/69B577D0C4C25263/MLData/tensorboard_trash",
 )
 mapper = SynsetMapper(constants)
 
 from models.mlp import NeuralNetwork
 from models.vision_transformer import vit_custom, vit_tiny
 from models.res_net import res_net, res_net_pretrained
-from models.metaformer import basic, conformer, poolformer, graph_poolformer
 from models.sail_sg_poolformer import poolformer_s12
+from models.metaformer import (
+    vision_transformer,
+    graph_vision_transformer_nn,
+    graph_vision_transformer_nnn,
+    poolformer,
+    graph_poolformer_nn,
+    graph_poolformer_nnn,
+    depthwise_conformer,
+    symmetric_depthwise_conformer_nn,
+    symmetric_depthwise_conformer_nnn,
+    symmetric_graph_depthwise_conformer_nn,
+    symmetric_graph_depthwise_conformer_nnn,
+    full_conformer_nnn,
+)
 
 available_models = {  # add custom configurations in this dict
     "ML-Perceptron-RandSize": NeuralNetwork,
     "RES-NET": res_net,
     "RES-NET-PRETRAINED": res_net_pretrained,
+    "PAPER-POOLFORMER": poolformer_s12,
     "DINO-TINY": vit_tiny,
     "DINO-CLASSIFIER": vit_custom,
-    "METAFORMER-BASE": basic,
-    "POOLFORMER": poolformer,
-    "GRAPH-POOLFORMER": graph_poolformer,
-    "CONFORMER": conformer,
-    "PAPER-POOLFORMER": poolformer_s12,
+    "VT": vision_transformer,
+    "GVT-NN": graph_vision_transformer_nn,
+    "GVT-NNN": graph_vision_transformer_nnn,
+    "PF": poolformer,
+    "GP-NN": graph_poolformer_nn,
+    "GP-NNN": graph_poolformer_nnn,
+    "CD": depthwise_conformer,
+    "SD-NN": symmetric_depthwise_conformer_nn,
+    "SD-NNN": symmetric_depthwise_conformer_nnn,
+    "GSD-NN": symmetric_graph_depthwise_conformer_nn,
+    "GSD-NNN": symmetric_graph_depthwise_conformer_nnn,
+    "CF": full_conformer_nnn,
 }
 
 
