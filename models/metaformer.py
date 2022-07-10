@@ -339,7 +339,7 @@ class TokenMixer(nn.Module):
         if self.unroll_needed:
             x = rearrange(
                 x,
-                "b n d -> b d (h w)",
+                "b (h w) d -> b d h w",
                 h=self.patch_nr_side_length,
                 w=self.patch_nr_side_length,
             )
@@ -347,9 +347,9 @@ class TokenMixer(nn.Module):
         x = self.token_mixer(x)
 
         if self.unroll_needed:
-            x = x = rearrange(
+            x = rearrange(
                 x,
-                "b d n -> b n d",
+                "b d h w -> b (h w) d",
             )
 
         return x
