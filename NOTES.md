@@ -107,6 +107,15 @@
         print(jax.devices())
         ```
 
+# jVMC
+
+-   install [jVMC](https://github.com/markusschmitt/vmc_jax#installation) (command line instruction here)
+
+    ```
+    sudo apt install mpich
+    pip install jVMC
+    ```
+
 # Datasets
 
 -   [Image test datasets](https://www.cs.toronto.edu/~kriz/cifar.html)
