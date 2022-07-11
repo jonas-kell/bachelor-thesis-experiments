@@ -75,6 +75,10 @@
         -   download [this](https://developer.nvidia.com/compute/cudnn/secure/8.4.1/local_installers/11.6/cudnn-local-repo-ubuntu2004-8.4.1.50_1.0-1_amd64.deb)
         -   ```
             sudo dpkg -i cudnn-local-repo-ubuntu2004-8.4.1.50_1.0-1_amd64.deb
+            sudo cp /var/cudnn-local-repo-ubuntu2004-8.4.1.50/cudnn-local-E3EC4A60-keyring.gpg /usr/share/keyrings/
+            sudo apt-get install libcudnn8=8.4.1.50-1+cuda11.6
+            sudo apt-get install libcudnn8-dev=8.4.1.50-1+cuda11.6
+            sudo apt-get install libcudnn8-samples=8.4.1.50-1+cuda11.6
             ```
     -   link GPU functionality
         -   `sudo ln -s /path/to/cuda /usr/local/cuda-11.7` (Was already linked for me)
@@ -106,6 +110,14 @@
         print(grad_tanh(1.0))   # Evaluate it at x = 1.0
         print(jax.devices())
         ```
+
+# flax
+
+-   install [flax](https://github.com/google/flax#quick-install)
+
+    ```
+    pip install flax
+    ```
 
 # jVMC
 
