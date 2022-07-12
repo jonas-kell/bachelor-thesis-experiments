@@ -64,7 +64,8 @@ def train_loop(
         train_correct_top1 += correct[:1].float().sum() / X.shape[0]
         train_correct_top3 += correct[:3].float().sum() / X.shape[0]
         train_correct_top5 += correct[:5].float().sum() / X.shape[0]
-        torch.cuda.synchronize()
+        if device != "cpu":
+            torch.cuda.synchronize()
 
         # timing
         end_processing_time = time.time()
