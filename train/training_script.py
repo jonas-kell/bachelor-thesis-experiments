@@ -9,7 +9,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-
+import math
 
 from CustomDataset import CustomDataset
 from PathAndFolderConstants import PathAndFolderConstants
@@ -17,7 +17,9 @@ from SynsetMapper import SynsetMapper
 from message import post_message_to_slack
 
 
-def train_loop(epoch, dataloader, model, loss_fn, optimizer, device, writer):
+def train_loop(
+    epoch, batch_size, dataloader, model, loss_fn, optimizer, device, writer
+):
     size = len(dataloader.dataset)
 
     num_batches = len(dataloader)
@@ -29,7 +31,8 @@ def train_loop(epoch, dataloader, model, loss_fn, optimizer, device, writer):
     loading_time_gpu = 0
     processing_time = 0
 
-    log_frequency = 50
+    log_amount = 20  # quivalent to every 50 batches with batch size 128
+    log_frequency = math.ceil(size / (log_amount * batch_size))
 
     start_loading_time_hdd = time.time()
     for batch, (X, y) in enumerate(dataloader):
@@ -300,7 +303,16 @@ def train_model(
         writer.add_text("epoch", epoch_message)
 
         try:
-            train_loop(t, train_dataloader, model, loss_fn, optimizer, device, writer)
+            train_loop(
+                t,
+                batch_size,
+                train_dataloader,
+                model,
+                loss_fn,
+                optimizer,
+                device,
+                writer,
+            )
         except Exception as exc:
             writer.add_text("error_train", traceback.format_exc())
             post_message_to_slack("Error: error_train")
