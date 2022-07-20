@@ -597,6 +597,8 @@ class VisionMetaformer(nn.Module):
             self.pos_embed = nn.Parameter(
                 torch.zeros(1, self.num_patches, self.embed_dim)
             )
+            trunc_normal_(self.pos_embed, std=0.02)
+
         if positional_encoding == "sinus":
             self.pos_embed = PositionalEncoding2D(self.embed_dim)
 
@@ -644,8 +646,6 @@ class VisionMetaformer(nn.Module):
         )
 
         # init model with random start values
-        if positional_encoding == "learned":
-            trunc_normal_(self.pos_embed, std=0.02)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -674,7 +674,7 @@ class VisionMetaformer(nn.Module):
                 h=self.patch_nr_side_length,
                 w=self.patch_nr_side_length,
             )
-            x = self.pos_embed(x)
+            x = x + self.pos_embed(x)
             x = rearrange(
                 x,
                 "b h w d -> b (h w) d",
