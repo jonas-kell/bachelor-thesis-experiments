@@ -1,5 +1,7 @@
+from math import inf
 import numpy as np
 from typing import Literal
+import torch
 
 
 def get_adding_matrix(matrix: np.ndarray) -> np.ndarray:
@@ -41,6 +43,12 @@ def transform_zero_matrix_to_neg_infinity(matrix: np.ndarray) -> np.ndarray:
     assert matrix.dtype == np.float16
 
     return np.where(matrix == 0.0, -np.Infinity, matrix)
+
+
+def transform_torch_zero_matrix_to_neg_infinity(matrix: torch.Tensor) -> torch.Tensor:
+    return torch.where(
+        matrix == 0.0, torch.scalar_tensor(-inf, device=matrix.device), matrix
+    )
 
 
 def transform_adjacency_matrix(
@@ -110,13 +118,3 @@ def nnn_matrix(n: int):
     kernel = np.array([[1, 0, 1], [0, 0, 0], [1, 0, 1]], dtype=np.bool8)
 
     return adjacency_matrix_from_locally_applied_kernel(kernel, n, n)
-
-
-def expand_by_one_unit(matrix: np.ndarray) -> np.ndarray:
-    assert matrix.dtype == np.float16
-    assert matrix.shape[0] == matrix.shape[1]
-
-    new_matrix = np.eye(matrix.shape[0] + 1, dtype=np.float16)
-    new_matrix[1:, 1:] = matrix
-
-    return new_matrix

@@ -6,24 +6,19 @@ import sys
 script_dir = os.path.dirname(__file__)
 helper_dir = os.path.join(script_dir, "../models")
 sys.path.append(helper_dir)
-from metaformer import GraphMask
-
-mask = GraphMask(
-    size=3,
-    graph_layer="symm_nnn",
-    average_graph_connections=False,
-    learnable_factors=True,
-    init_factors=[1, 1, 1],
-)
+from metaformer import GraphMaskConvolution
 
 input_size = 5
 channels_in = 9  # size * size
 batch = 1
 
-x_unbatched = torch.linspace(
-    1, channels_in * input_size, channels_in * input_size
-).reshape(channels_in, input_size)
-print(x_unbatched)
+mask = GraphMaskConvolution(
+    size=3,
+    embed_dim=input_size,
+    graph_layer="symm_nnn",
+)
+
+
 x_batched = torch.linspace(
     1,
     batch * channels_in * input_size,
@@ -38,9 +33,9 @@ optimizer = torch.optim.SGD(
 )
 loss_fn = nn.L1Loss()
 
-# test unbatched
+# test batched
 optimizer.zero_grad()
-result = mask(x_unbatched)
+result = mask(x_batched)
 loss = loss_fn(result, torch.ones_like(result))
 loss.backward()
 optimizer.step()

@@ -10,7 +10,6 @@ from adjacency_matrix import (
     nn_matrix,
     nnn_matrix,
     transform_adjacency_matrix,
-    expand_by_one_unit,
 )
 
 adjacency_matrix = np.array([[1, 1, 0], [1, 1, 1], [0, 1, 1]], dtype=np.bool8)
@@ -30,4 +29,3 @@ print((0.5 * nn + 0.2 * nnn) @ test)
 
 test_matrix = np.array([[2, 31, 2], [2, -31, 2], [12, 1, 12]], dtype=np.float16)
 print(test_matrix)
-print(expand_by_one_unit(test_matrix))

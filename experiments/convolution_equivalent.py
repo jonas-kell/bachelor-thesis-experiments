@@ -6,7 +6,7 @@ import sys
 script_dir = os.path.dirname(__file__)
 helper_dir = os.path.join(script_dir, "../models")
 sys.path.append(helper_dir)
-from metaformer import GraphMask
+from metaformer import GraphMaskConvolution
 from helpers.SymmConv2d import SymmDepthSepConv2d
 from einops import rearrange
 
@@ -24,20 +24,33 @@ print(x_batched.shape)
 print(x_batched)
 
 
-graph = GraphMask(
-    size=size,
-    graph_layer="symm_nnn",
-    average_graph_connections=False,
-    learnable_factors=False,
-    init_factors=[0, 0, 0],
-)
+graph = GraphMaskConvolution(size=size, graph_layer="symm_nnn", embed_dim=embed_dim)
+# clear random init values
+graph.factors.data *= 0
+# assign values
+graph.factors.data[0][0] += 1
+graph.factors.data[0][2] += 3
+graph.factors.data[1][1] += -2
+graph.factors.data[1][3] += -1
+graph.factors.data[2][0] += 1
+graph.factors.data[2][1] += 3
+
+print(graph.factors)
+
 conv = SymmDepthSepConv2d(channels=embed_dim, has_nn=True, has_nnn=True, bias=False)
+# clear random init values
 conv.center_params.data *= 0
-conv.center_params.data[0] += 1
 conv.nn_params.data *= 0
-conv.nn_params.data += 0
 conv.nnn_params.data *= 0
-conv.nnn_params.data += 0
+# assign values
+conv.center_params.data[0] += 1
+conv.center_params.data[2] += 3
+conv.nn_params.data[1] += -2
+conv.nn_params.data[3] += -1
+conv.nnn_params.data[0] += 1
+conv.nnn_params.data[1] += 3
+
+print(conv.center_params, conv.nn_params, conv.nnn_params)
 
 
 graph_result = graph(x_batched)

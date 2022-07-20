@@ -28,6 +28,7 @@ from helpers.adjacency_matrix import (
     nn_matrix,
     nnn_matrix,
     transform_adjacency_matrix,
+    transform_torch_zero_matrix_to_neg_infinity,
 )
 from einops import rearrange
 from positional_encodings.torch_encodings import PositionalEncoding2D
@@ -134,12 +135,9 @@ class Attention(nn.Module):
         self.graph_projection = (
             nn.Identity()  # arbitrary lets this behave as a VT, not a GVT
             if mixing_symmetry == "arbitrary"
-            else GraphMask(
+            else GraphMaskAttention(
                 size=patch_nr_side_length,
                 graph_layer=mixing_symmetry,
-                average_graph_connections=True,
-                learnable_factors=True,
-                init_factors=None,  # random
             )
         )
 
@@ -254,11 +252,9 @@ class TokenMixer(nn.Module):
                 )
             elif mixing_symmetry in ["symm_nn", "symm_nnn"]:
                 self.unroll_needed = False
-                self.token_mixer = GraphMask(
+                self.token_mixer = GraphMaskPooling(
                     size=patch_nr_side_length,
                     graph_layer=mixing_symmetry,
-                    average_graph_connections=True,  # pooling averages the data
-                    learnable_factors=False,  # pooling has no learnable parameters
                     init_factors=[
                         1,
                         1,
@@ -305,12 +301,10 @@ class TokenMixer(nn.Module):
                 raise RuntimeError(
                     f"Mixing symmetry modifier {mixing_symmetry} not supported"
                 )
-            self.token_mixer = GraphMask(
+            self.token_mixer = GraphMaskConvolution(
                 size=patch_nr_side_length,
                 graph_layer=mixing_symmetry,
-                average_graph_connections=False,  # convolution is only multiply-add operation
-                learnable_factors=True,
-                init_factors=None,  # init random
+                embed_dim=embed_dim,
             )
 
         # ! full convolution
@@ -360,30 +354,9 @@ class GraphMask(nn.Module):
     def __init__(
         self,
         size: int = 14,
-        graph_layer: Literal["symm_nn", "symm_nnn"] = "symm_nn",
         average_graph_connections: bool = False,
-        learnable_factors: bool = False,
-        init_factors=None,
     ):
         super().__init__()
-
-        self.learnable_factors = learnable_factors
-        self.graph_layer = graph_layer
-
-        self.factors = nn.Parameter(
-            torch.tensor(
-                [1, 1, 1], dtype=torch.float32, requires_grad=learnable_factors
-            ),
-            requires_grad=learnable_factors,
-        )
-        if init_factors is not None:
-            values = torch.tensor(
-                init_factors, dtype=torch.float32, requires_grad=learnable_factors
-            )
-            assert list(values.shape) == list([3])
-            self.factors.data = values
-        else:
-            nn.init.normal_(self.factors.data)
 
         self.center_weight_template = nn.Parameter(
             torch.tensor(
@@ -422,12 +395,33 @@ class GraphMask(nn.Module):
             requires_grad=False,
         )
 
+    def forward(
+        self, x
+    ):  # element itself doesn't do anything. Just provides graph matrices and needs to be extended
+        return x
+
+
+class GraphMaskPooling(GraphMask):
+    def __init__(
+        self,
+        size: int = 14,
+        graph_layer: Literal["symm_nn", "symm_nnn"] = "symm_nn",
+        init_factors=[1, 1, 1],
+    ):
+        super().__init__(size=size, average_graph_connections=True)
+
+        self.graph_layer = graph_layer
+
+        self.factors = nn.Parameter(
+            torch.tensor(init_factors, dtype=torch.float32, requires_grad=False),
+            requires_grad=False,
+        )
+
         # precompute for speedup
-        if not self.learnable_factors:
-            self.matrix_cache = nn.Parameter(
-                self.calculate_matrix(),
-                requires_grad=False,
-            )
+        self.matrix_cache = nn.Parameter(
+            self.calculate_matrix(),
+            requires_grad=False,
+        )
 
     def calculate_matrix(self):
         matrix = self.factors[0] * self.center_weight_template
@@ -441,12 +435,84 @@ class GraphMask(nn.Module):
         return matrix
 
     def forward(self, x):
-        if not self.learnable_factors:
-            x = torch.matmul(self.matrix_cache, x)  # use cache
-        else:
-            x = torch.matmul(self.calculate_matrix(), x)
+        x = torch.matmul(self.matrix_cache, x)  # use cache
 
         return x
+
+
+class GraphMaskAttention(GraphMask):
+    def __init__(
+        self,
+        size: int = 14,
+        graph_layer: Literal["symm_nn", "symm_nnn"] = "symm_nn",
+    ):
+        super().__init__(size=size, average_graph_connections=False)
+
+        self.graph_layer = graph_layer
+
+        self.factors = nn.Parameter(
+            torch.zeros((3), dtype=torch.float32, requires_grad=True),
+            requires_grad=True,
+        )
+        nn.init.normal_(self.factors.data)
+
+    def calculate_matrix(self):
+        matrix = self.factors[0] * self.center_weight_template
+
+        if self.graph_layer in ["symm_nn", "symm_nnn"]:
+            matrix += self.factors[1] * self.nn_weight_template
+
+        if self.graph_layer == "symm_nnn":
+            matrix += self.factors[2] * self.nnn_weight_template
+
+        return matrix
+
+    def forward(self, x):
+        x = transform_torch_zero_matrix_to_neg_infinity(
+            torch.einsum("ij,bhij->bhij", self.calculate_matrix(), x)
+        )
+
+        return x
+
+
+class GraphMaskConvolution(GraphMask):
+    def __init__(
+        self,
+        size: int = 14,
+        embed_dim=192,
+        graph_layer: Literal["symm_nn", "symm_nnn"] = "symm_nn",
+    ):
+        super().__init__(size=size, average_graph_connections=False)
+
+        self.graph_layer = graph_layer
+
+        self.factors = nn.Parameter(
+            torch.zeros((3, embed_dim), dtype=torch.float32, requires_grad=True),
+            requires_grad=True,
+        )
+        nn.init.normal_(self.factors.data)
+
+    def forward(self, x):
+
+        res = torch.einsum(
+            "d,bnd->bnd", self.factors[0], torch.matmul(self.center_weight_template, x)
+        )
+
+        if self.graph_layer in ["symm_nn", "symm_nnn"]:
+            res += torch.einsum(
+                "d,bnd->bnd",
+                self.factors[1],
+                torch.matmul(self.nn_weight_template, x),
+            )
+
+        if self.graph_layer == "symm_nnn":
+            res += torch.einsum(
+                "d,bnd->bnd",
+                self.factors[2],
+                torch.matmul(self.nnn_weight_template, x),
+            )
+
+        return res
 
 
 class PatchEmbed(nn.Module):
