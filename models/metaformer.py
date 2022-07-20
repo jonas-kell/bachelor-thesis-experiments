@@ -30,6 +30,7 @@ from helpers.adjacency_matrix import (
     transform_adjacency_matrix,
 )
 from einops import rearrange
+from positional_encodings.torch_encodings import PositionalEncoding2D
 
 
 class DropPath(nn.Module):
@@ -488,7 +489,7 @@ class VisionMetaformer(nn.Module):
         drop_path_rate=0.0,
         norm_layer=nn.LayerNorm,
         # token mixing
-        positional_encoding: Literal["none", "learned"] = "learned",
+        positional_encoding: Literal["none", "learned", "sinus"] = "learned",
         token_mixer: Literal[
             "attention",
             "pooling",
@@ -516,17 +517,23 @@ class VisionMetaformer(nn.Module):
             in_chans=in_chans,
             embed_dim=embed_dim,
         )
-        num_patches = self.patch_embed.num_patches
-        patch_nr_side_length = int(math.sqrt(num_patches))
+        self.num_patches = self.patch_embed.num_patches
+        self.patch_nr_side_length = int(math.sqrt(self.num_patches))
+        self.embed_dim = embed_dim
 
         # make sure, the embedding can be reasonably unrolled again
-        if patch_nr_side_length * patch_nr_side_length != num_patches:
+        if self.patch_nr_side_length * self.patch_nr_side_length != self.num_patches:
             raise RuntimeError(
                 f"Vison metaformer currently only supports square nr of patches encoding"
             )
 
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim))
+        if positional_encoding == "learned":
+            self.pos_embed = nn.Parameter(
+                torch.zeros(1, self.num_patches, self.embed_dim)
+            )
+        if positional_encoding == "sinus":
+            self.pos_embed = PositionalEncoding2D(self.embed_dim)
+
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         dpr = [
@@ -535,13 +542,13 @@ class VisionMetaformer(nn.Module):
         self.blocks = nn.ModuleList(
             [
                 Block(
-                    dim=embed_dim,
+                    dim=self.embed_dim,
                     token_mixer=TokenMixer(
                         drop=drop_rate,
                         # reshaping info
-                        num_patches=num_patches,
-                        patch_nr_side_length=patch_nr_side_length,
-                        embed_dim=embed_dim,
+                        num_patches=self.num_patches,
+                        patch_nr_side_length=self.patch_nr_side_length,
+                        embed_dim=self.embed_dim,
                         # token mixing
                         token_mixer=token_mixer,
                         mixing_symmetry=mixing_symmetry,
@@ -561,16 +568,18 @@ class VisionMetaformer(nn.Module):
                 for i in range(depth)
             ]
         )
-        self.norm = norm_layer(embed_dim)
+        self.norm = norm_layer(self.embed_dim)
 
         # (Classifier) head
         self.head = AveragingConvolutionHead(
-            in_channels=num_patches, in_embed_dim=embed_dim, nr_classes=num_classes
+            in_channels=self.num_patches,
+            in_embed_dim=self.embed_dim,
+            nr_classes=num_classes,
         )
 
         # init model with random start values
-        trunc_normal_(self.pos_embed, std=0.02)
-        trunc_normal_(self.cls_token, std=0.02)
+        if positional_encoding == "learned":
+            trunc_normal_(self.pos_embed, std=0.02)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -587,8 +596,23 @@ class VisionMetaformer(nn.Module):
         x = self.patch_embed(x)  # patch linear embedding
 
         if self.positional_encoding == "learned":
-            # add positional encoding to each token
+            # add learnable positional encoding to each token
             x = x + self.pos_embed
+
+        if self.positional_encoding == "sinus":
+            # add positional encoding to each token
+
+            x = rearrange(
+                x,
+                "b (h w) d -> b h w d",
+                h=self.patch_nr_side_length,
+                w=self.patch_nr_side_length,
+            )
+            x = self.pos_embed(x)
+            x = rearrange(
+                x,
+                "b h w d -> b (h w) d",
+            )
 
         return self.pos_drop(x)
 
@@ -626,7 +650,7 @@ def graph_vision_transformer_nn(**kwargs):
         num_heads=3,
         qkv_bias=True,
         mixing_symmetry="symm_nn",
-        positional_encoding="learned",
+        positional_encoding="sinus",
         **kwargs,
     )
 
@@ -637,7 +661,7 @@ def graph_vision_transformer_nnn(**kwargs):
         num_heads=3,
         qkv_bias=True,
         mixing_symmetry="symm_nnn",
-        positional_encoding="learned",
+        positional_encoding="sinus",
         **kwargs,
     )
 
@@ -645,8 +669,8 @@ def graph_vision_transformer_nnn(**kwargs):
 def poolformer(**kwargs):
     return tiny_parameters()(
         token_mixer="pooling",
-        positional_encoding="none",
         mixing_symmetry="arbitrary",
+        positional_encoding="none",
         **kwargs,
     )
 
