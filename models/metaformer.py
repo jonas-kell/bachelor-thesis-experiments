@@ -269,7 +269,7 @@ class TokenMixer(nn.Module):
         # ! depthwise convolution
         elif token_mixer == "depthwise-convolution":
             self.unroll_needed = True
-            use_bias = True
+            use_bias = False  # To stay comparable to the Graph convolution, also do not use a bias
             if mixing_symmetry == "arbitrary":
                 self.token_mixer = DepthSepConv2d(
                     channels=embed_dim, kernel_size=3, bias=use_bias
@@ -296,7 +296,7 @@ class TokenMixer(nn.Module):
         # ! graph convolution
         elif token_mixer == "graph-convolution":
             self.unroll_needed = False
-            use_bias = True
+            use_bias = False  # Graph Convolution cannot currently use bias
             if mixing_symmetry not in ["symm_nn", "symm_nnn"]:
                 raise RuntimeError(
                     f"Mixing symmetry modifier {mixing_symmetry} not supported"
@@ -310,7 +310,7 @@ class TokenMixer(nn.Module):
         # ! full convolution
         elif token_mixer == "full-convolution":
             self.unroll_needed = True
-            use_bias = True
+            use_bias = True  # as it is aready not competitive, it may as well use bias
             if mixing_symmetry != "arbitrary":
                 raise RuntimeError(
                     f"Mixing symmetry modifier {mixing_symmetry} not supported"
