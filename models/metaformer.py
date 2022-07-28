@@ -583,19 +583,17 @@ class VisionMetaformer(nn.Module):
         pool_size=3,
     ):
         super().__init__()
-        self.num_features = self.embed_dim = embed_dim
-
+        self.embed_dim = embed_dim
         self.positional_encoding = positional_encoding
 
         self.patch_embed = PatchEmbed(
             img_size=img_size[0],
             patch_size=patch_size,
             in_chans=in_chans,
-            embed_dim=embed_dim,
+            embed_dim=self.embed_dim,
         )
         self.num_patches = self.patch_embed.num_patches
         self.patch_nr_side_length = int(math.sqrt(self.num_patches))
-        self.embed_dim = embed_dim
 
         # make sure, the embedding can be reasonably unrolled again
         if self.patch_nr_side_length * self.patch_nr_side_length != self.num_patches:
