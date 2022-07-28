@@ -118,3 +118,15 @@ def nnn_matrix(n: int):
     kernel = np.array([[1, 0, 1], [0, 0, 0], [1, 0, 1]], dtype=np.bool8)
 
     return adjacency_matrix_from_locally_applied_kernel(kernel, n, n)
+
+
+if __name__ == "__main__":
+    print(
+        transform_adjacency_matrix(
+            np.array(
+                [[0, 1, 0, 0], [1, 0, 0, 1], [0, 0, 0, 1], [1, 0, 0, 0]], dtype=np.bool8
+            ),
+            neg_inf=False,
+            type="avg+1",
+        )
+    )
