@@ -1,3 +1,11 @@
+"""
+License of the repository the code is copied from initially is inserted below.
+
+The copyright of this code no longer belongs to facebook, as it was heavily modified for the bachelor-thesis written by Jonas Kell at the University of Augsburg in accordance with the Apache License it was provided with
+
+Copyright (c) Jonas Kell 2022
+"""
+
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,10 +19,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """
-Mostly copy-paste from dino library initially. Modified to fit my needs
+Mostly copy-paste from dino library initially. Modified heavily to fit my needs
 https://github.com/facebookresearch/dinovision_transformer.py
 """
+
 import math
 from functools import partial
 from typing import Literal
