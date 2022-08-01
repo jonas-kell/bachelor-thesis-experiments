@@ -7,6 +7,8 @@ from torch import nn
 import torch
 import random
 import numpy as np
+import re
+from alive_progress import alive_bar
 
 sys.path.append(os.path.abspath("./managing_imagenet_data"))
 sys.path.append(os.path.abspath("./slack"))
@@ -95,6 +97,57 @@ def train(
     train_model(device, network, constants, mapper, **kwargs)
 
 
+def cleanup_models(
+    constants: PathAndFolderConstants,
+):
+    predicate = re.compile("model_(\d+)\.pth")
+    predicate_keep = re.compile("keep_(\d+)")
+
+    tensorboard_folder = constants.path_to_tensorboard_log_folder
+    log_folders = os.listdir(tensorboard_folder)
+
+    for folder in log_folders:
+        full_path = os.path.join(tensorboard_folder, folder)
+
+        print(f"Cleaning the folder '{full_path}'")
+
+        folder_contents = os.listdir(full_path)
+
+        filtered = [
+            int(re.search(r"model_(\d+)\.pth", s).group(1))
+            for s in folder_contents
+            if predicate.match(s)
+        ]
+
+        keep = [
+            int(re.search(r"keep_(\d+)", s).group(1))
+            for s in folder_contents
+            if predicate_keep.match(s)
+        ]
+
+        print(f"Found {len(filtered)} 'model_##.pth' files")
+        max_index = max(filtered, default=-1)
+
+        print(f"Manually set to keep indices {keep}")
+
+        to_throw_away = [
+            f"model_{index}.pth"
+            for index in filtered
+            if index % 10 != 9 and index != max_index and index not in keep
+        ]
+
+        print(f"Deleting {len(to_throw_away)} elements")
+
+        with alive_bar(len(to_throw_away)) as bar:
+
+            for throw_away_model in to_throw_away:
+                path = os.path.join(full_path, throw_away_model)
+
+                os.remove(path)
+
+                bar()  # advance
+
+
 def evaluate(
     device: Literal["cuda", "cpu"],
     path_to_model_file: str,
@@ -126,6 +179,11 @@ if __name__ == "__main__":
         print("Prepare the data")
 
         prepare_data(constants, mapper)
+
+    if type_of_operation == "cleanup":
+        print("Cleanup obsolete model files")
+
+        cleanup_models(constants)
 
     elif type_of_operation == "train":
         # training requires random numbers.
