@@ -1,4 +1,4 @@
-# Bachelor-Thesis: Investigation of transformer architectures for geometrical graph structures and their application to two dimensional spin systems
+# Bachelor-Thesis: Investigation of transformer architectures for geometrical graph structures and their application to two-dimensional spin systems
 
 The work for my Bachelors-Thesis is split into multiple repositories (links for quick access, it may be possible that the repo is private).
 
