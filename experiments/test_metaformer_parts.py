@@ -5,7 +5,7 @@ import sys
 script_dir = os.path.dirname(__file__)
 sys.path.append(os.path.join(script_dir, "../models"))
 
-from metaformer import Attention, AveragingConvolutionHead
+from metaformer import Attention, AveragingPoolingHead
 
 embed_dim = 8 * 2
 nr_patches = 15
@@ -29,7 +29,7 @@ x = torch.tensor(range(nr_patches * embed_dim)).reshape((1, nr_patches, embed_di
 print("x: ", x)
 print("x shape: ", x.shape)
 
-model = AveragingConvolutionHead(in_channels=nr_patches, in_embed_dim=embed_dim)
+model = AveragingPoolingHead(in_channels=nr_patches, in_embed_dim=embed_dim)
 
 print(model(x))
 print(model(x).shape)

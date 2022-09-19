@@ -93,7 +93,7 @@ class Mlp(nn.Module):
         return x
 
 
-class AveragingConvolutionHead(nn.Module):
+class AveragingPoolingHead(nn.Module):
     def __init__(
         self,
         in_channels,
@@ -647,7 +647,7 @@ class VisionMetaformer(nn.Module):
         self.norm = norm_layer(self.embed_dim)
 
         # (Classifier) head
-        self.head = AveragingConvolutionHead(
+        self.head = AveragingPoolingHead(
             in_channels=self.num_patches,
             in_embed_dim=self.embed_dim,
             nr_classes=num_classes,
