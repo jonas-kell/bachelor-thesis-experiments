@@ -6,6 +6,11 @@ The work for my Bachelors-Thesis is split into multiple repositories (links for 
 -   [Experimental Code, Tests and Library-Setup](https://github.com/jonas-kell/bachelor-thesis-experiments)
 -   [Final Code/Scripts/Results](https://github.com/jonas-kell/bachelor-thesis-code)
 
-# These are experiments. Each folder has its own quick start
+# Installation
+
+Reference [Installation](./INSTALLATION.md) for package installation instructions.
+Reference [Datasets](./DATASETS.md) for instructions on how to download the datasets required for training
+
+# Quick start
 
 Reference [QUICK START](./QUICK_START.md) for usage instructions.
