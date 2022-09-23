@@ -56,6 +56,9 @@ from models.metaformer import (
     vision_transformer_sinusenc,
     graph_vision_transformer_nn_learnedenc,
     graph_vision_transformer_nnn_learnedenc,
+    vision_transformer_noenc,
+    graph_vision_transformer_nn_noenc,
+    graph_vision_transformer_nnn_noenc,
 )
 
 available_models = {  # add custom configurations in this dict
@@ -67,10 +70,13 @@ available_models = {  # add custom configurations in this dict
     "DINO-CLASSIFIER": vit_custom,
     "VT": vision_transformer,
     "VT-ALT": vision_transformer_sinusenc,
+    "VT-NO": vision_transformer_noenc,
     "GTF-NN": graph_vision_transformer_nn,
     "GTF-NN-ALT": graph_vision_transformer_nn_learnedenc,
+    "GTF-NO": graph_vision_transformer_nn_noenc,
     "GTF-NNN": graph_vision_transformer_nnn,
     "GTF-NNN-ALT": graph_vision_transformer_nnn_learnedenc,
+    "GTF-NO": graph_vision_transformer_nnn_noenc,
     "PF": poolformer,
     "GPF-NN": graph_poolformer_nn,
     "GPF-NNN": graph_poolformer_nnn,

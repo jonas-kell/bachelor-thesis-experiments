@@ -724,6 +724,12 @@ def vision_transformer_sinusenc(**kwargs):
     )
 
 
+def vision_transformer_noenc(**kwargs):
+    return tiny_parameters()(
+        num_heads=3, qkv_bias=True, positional_encoding="none", **kwargs
+    )
+
+
 def graph_vision_transformer_nn(**kwargs):
     return tiny_parameters()(
         token_mixer="attention",
@@ -746,6 +752,17 @@ def graph_vision_transformer_nn_learnedenc(**kwargs):
     )
 
 
+def graph_vision_transformer_nn_noenc(**kwargs):
+    return tiny_parameters()(
+        token_mixer="attention",
+        num_heads=3,
+        qkv_bias=True,
+        mixing_symmetry="symm_nn",
+        positional_encoding="none",
+        **kwargs,
+    )
+
+
 def graph_vision_transformer_nnn(**kwargs):
     return tiny_parameters()(
         token_mixer="attention",
@@ -764,6 +781,17 @@ def graph_vision_transformer_nnn_learnedenc(**kwargs):
         qkv_bias=True,
         mixing_symmetry="symm_nnn",
         positional_encoding="learned",
+        **kwargs,
+    )
+
+
+def graph_vision_transformer_nnn_noenc(**kwargs):
+    return tiny_parameters()(
+        token_mixer="attention",
+        num_heads=3,
+        qkv_bias=True,
+        mixing_symmetry="symm_nnn",
+        positional_encoding="none",
         **kwargs,
     )
 
