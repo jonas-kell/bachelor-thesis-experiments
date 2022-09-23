@@ -32,7 +32,7 @@ constants = PathAndFolderConstants(
     path_to_imagenet_data_folder="/media/jonas/69B577D0C4C25263/MLData/imagenet-object-localization-challenge/ILSVRC/Data/CLS-LOC",
     path_to_folder_for_transformed_data="/media/jonas/69B577D0C4C25263/MLData/transformed",
     path_to_validation_solution_file="/media/jonas/69B577D0C4C25263/MLData/imagenet-object-localization-challenge/LOC_val_solution.csv",
-    path_to_tensorboard_log_folder="/media/jonas/69B577D0C4C25263/MLData/tensorboard_trash",
+    path_to_tensorboard_log_folder="/media/jonas/69B577D0C4C25263/MLData/tensorboard",
 )
 mapper = SynsetMapper(constants)
 
@@ -73,10 +73,10 @@ available_models = {  # add custom configurations in this dict
     "VT-NO": vision_transformer_noenc,
     "GTF-NN": graph_vision_transformer_nn,
     "GTF-NN-ALT": graph_vision_transformer_nn_learnedenc,
-    "GTF-NO": graph_vision_transformer_nn_noenc,
+    "GTF-NN-NO": graph_vision_transformer_nn_noenc,
     "GTF-NNN": graph_vision_transformer_nnn,
     "GTF-NNN-ALT": graph_vision_transformer_nnn_learnedenc,
-    "GTF-NO": graph_vision_transformer_nnn_noenc,
+    "GTF-NNN-NO": graph_vision_transformer_nnn_noenc,
     "PF": poolformer,
     "GPF-NN": graph_poolformer_nn,
     "GPF-NNN": graph_poolformer_nnn,
