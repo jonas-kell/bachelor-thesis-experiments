@@ -76,5 +76,5 @@ At the moment the following parameters are available:
 A training pass can be continued at the point of each epoch:
 
 ```cmd
-python3 main.py train continue=<<path/to/tensorboard/log/folder>>
+python3 main.py train continue=<<path/to/tensorboard/log/folder/of/run>>
 ```
