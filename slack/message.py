@@ -1,4 +1,7 @@
-slack_token = "xoxb-3593791598916-3615419802016-POZAjANKfwk77iMYikOc8TgV"  # hardcoded token, channel will get deleted afterwards, if I forget, send me a message in the channel ;-)
+slack_token = "xoxb-3593791598916-3615419802016-POZAjANKfwk77iMYikOc8TgV"
+# hardcoded token, channel will get deleted afterwards, if I forget, send me a message in the channel ;-)
+# update: I now know that slack actively scans public repos for their tokens and immediately deactivates them. Very impressive.
+
 slack_channel = "#machine-learning"
 slack_icon_emoji = ":see_no_evil:"
 slack_user_name = "ML-Notifications"
